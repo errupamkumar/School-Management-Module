@@ -47,9 +47,12 @@ interface RecentChat {
 
 export default function AIAssistantPage() {
   const { data: session } = useSession();
-  const user = session?.user as any;
-  const role: string = (user?.role || 'SUPER_ADMIN').toUpperCase();
-  const userName: string = user?.name || 'Administrator';
+  const sessionUser = session?.user as any;
+  const initialRole: string = (sessionUser?.role || 'SUPER_ADMIN').toUpperCase();
+
+  // Active Role Scope: synced with logged in user or interactive test tabs
+  const [activeRole, setActiveRole] = useState<string>(initialRole);
+  const [activeUserName, setActiveUserName] = useState<string>(sessionUser?.name || 'Administrator');
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -64,11 +67,21 @@ export default function AIAssistantPage() {
   const [tokensUsedToday, setTokensUsedToday] = useState<number>(0);
   const [dailyLimit, setDailyLimit] = useState<number>(1000000);
 
-  // Dynamic Recent Chats based on role
+  // Sync role when session is loaded
+  useEffect(() => {
+    if (session?.user) {
+      const u = session.user as any;
+      const detectedRole = (u.role || 'SUPER_ADMIN').toUpperCase();
+      setActiveRole(detectedRole);
+      setActiveUserName(u.name || (detectedRole === 'SUPER_ADMIN' ? 'Dr. Anand Swaroop Pathak' : detectedRole));
+    }
+  }, [session]);
+
+  // Dynamic Recent Chats based on activeRole
   const [recentChats, setRecentChats] = useState<RecentChat[]>([]);
 
   useEffect(() => {
-    if (role === 'TEACHER') {
+    if (activeRole === 'TEACHER') {
       setRecentChats([
         {
           id: 'chat-t1',
@@ -83,7 +96,7 @@ export default function AIAssistantPage() {
           preview: 'Created practical examination rubric...',
         },
       ]);
-    } else if (role === 'PARENT') {
+    } else if (activeRole === 'PARENT') {
       setRecentChats([
         {
           id: 'chat-p1',
@@ -98,7 +111,7 @@ export default function AIAssistantPage() {
           preview: 'Verified morning pickup & drop schedule...',
         },
       ]);
-    } else if (role === 'STUDENT') {
+    } else if (activeRole === 'STUDENT') {
       setRecentChats([
         {
           id: 'chat-s1',
@@ -129,7 +142,7 @@ export default function AIAssistantPage() {
         },
       ]);
     }
-  }, [role]);
+  }, [activeRole]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -212,6 +225,21 @@ export default function AIAssistantPage() {
     toast.success('Started a fresh conversation with Adam');
   };
 
+  const handleRoleChange = (newRole: string) => {
+    setActiveRole(newRole);
+    setMessages([]);
+    const defaultName =
+      newRole === 'SUPER_ADMIN'
+        ? 'Dr. Anand Swaroop Pathak'
+        : newRole === 'TEACHER'
+        ? 'Rajesh Khanna'
+        : newRole === 'PARENT'
+        ? 'Rajesh Mishra'
+        : 'Aarav Sharma';
+    setActiveUserName(defaultName);
+    toast.success(`Active scope: ${newRole}`);
+  };
+
   const sendMessage = async (promptText?: string) => {
     const query = (promptText || inputValue).trim();
     if (!query) return;
@@ -239,9 +267,9 @@ export default function AIAssistantPage() {
         body: JSON.stringify({
           message: query,
           history: messages.slice(-4).map((m) => ({ sender: m.sender, text: m.text })),
-          role,
-          userName,
-          userEmail: user?.email,
+          role: activeRole,
+          userName: activeUserName,
+          userEmail: sessionUser?.email,
         }),
       });
 
@@ -299,7 +327,7 @@ export default function AIAssistantPage() {
 
   // Role-Based Starter Prompt Cards
   const getStarterPrompts = () => {
-    if (role === 'TEACHER') {
+    if (activeRole === 'TEACHER') {
       return [
         {
           id: 't1',
@@ -328,7 +356,7 @@ export default function AIAssistantPage() {
       ];
     }
 
-    if (role === 'PARENT') {
+    if (activeRole === 'PARENT') {
       return [
         {
           id: 'p1',
@@ -357,7 +385,7 @@ export default function AIAssistantPage() {
       ];
     }
 
-    if (role === 'STUDENT') {
+    if (activeRole === 'STUDENT') {
       return [
         {
           id: 's1',
@@ -419,18 +447,18 @@ export default function AIAssistantPage() {
 
   // Role Scope Display Name
   const getRoleScopeLabel = () => {
-    switch (role) {
+    switch (activeRole) {
       case 'SUPER_ADMIN':
       case 'ADMIN':
-        return 'Super Admin Scope • Full Institutional Access';
+        return 'Super Admin Scope • Full Institutional & Financial Access';
       case 'ACCOUNTANT':
-        return 'Accountant Scope • Finance & Fee Access';
+        return 'Accountant Scope • Finance, Fees & Payroll';
       case 'TEACHER':
-        return 'Teacher Scope • Academic & Class Records';
+        return 'Teacher Scope • Academic, Homework & Attendance';
       case 'PARENT':
-        return 'Parent Portal • Ward Personal Access';
+        return 'Parent Portal • Ward Records & Fees';
       case 'STUDENT':
-        return 'Student Portal • Schedule & Homework';
+        return 'Student Portal • Timetable & Study Schedule';
       default:
         return 'General User Scope';
     }
@@ -448,16 +476,60 @@ export default function AIAssistantPage() {
             </span>
             <span className="text-gray-400">&gt;</span>
             <span className="text-gray-500 dark:text-gray-400 font-normal">Chat</span>
-            <span className="hidden sm:inline-flex text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/50 ml-2">
-              {role}
-            </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Online</span>
-            </span>
+          {/* Interactive Role Switcher Tabs */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-slate-800 rounded-xl">
+              <button
+                type="button"
+                onClick={() => handleRoleChange('SUPER_ADMIN')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all',
+                  activeRole === 'SUPER_ADMIN' || activeRole === 'ADMIN'
+                    ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
+                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
+                )}
+              >
+                👑 Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRoleChange('TEACHER')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all',
+                  activeRole === 'TEACHER'
+                    ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
+                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
+                )}
+              >
+                👨‍🏫 Teacher
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRoleChange('PARENT')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all',
+                  activeRole === 'PARENT'
+                    ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
+                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
+                )}
+              >
+                👨‍👩‍👦 Parent
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRoleChange('STUDENT')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all',
+                  activeRole === 'STUDENT'
+                    ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
+                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
+                )}
+              >
+                🎓 Student
+              </button>
+            </div>
 
             <button
               type="button"
@@ -476,7 +548,7 @@ export default function AIAssistantPage() {
           <div className="hidden lg:block lg:col-span-1 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 p-4 shadow-sm min-h-[520px]">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Recent Chats</h3>
-              <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">{role}</span>
+              <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">{activeRole}</span>
             </div>
 
             {recentChats.length === 0 ? (
@@ -523,7 +595,7 @@ export default function AIAssistantPage() {
                       SRM ECO TECH
                     </span>
                     <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-medium">
-                      {userName} ({role})
+                      {activeUserName} ({activeRole})
                     </span>
                   </h2>
                   <p className="text-[11px] text-gray-500 dark:text-gray-400">{getRoleScopeLabel()}</p>
@@ -578,7 +650,7 @@ export default function AIAssistantPage() {
                 <div className="max-w-2xl mx-auto py-4 sm:py-6 space-y-5">
                   <div className="text-center space-y-1">
                     <p className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200">
-                      Welcome, {userName}! ({role})
+                      Welcome, {activeUserName}! ({activeRole})
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Your school AI assistant is ready for your role. Ask anything or pick a sample question below:
@@ -670,7 +742,7 @@ export default function AIAssistantPage() {
                               Adam (Vidyalaya AI)
                             </span>
                             <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 font-medium">
-                              {role}
+                              {activeRole}
                             </span>
                           </div>
                           <button
@@ -721,7 +793,7 @@ export default function AIAssistantPage() {
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce [animation-delay:0.2s]" />
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce [animation-delay:0.4s]" />
                     </div>
-                    <span>Adam is consulting authorized records for {role}...</span>
+                    <span>Adam is consulting authorized records for {activeRole}...</span>
                   </div>
                 </div>
               )}
@@ -757,12 +829,12 @@ export default function AIAssistantPage() {
                     placeholder={
                       tokensRemaining <= 0
                         ? 'Daily quota exhausted (1,000,000 tokens/day)'
-                        : `Ask Adam (${role} scope: ${
-                            role === 'PARENT'
+                        : `Ask Adam (${activeRole} scope: ${
+                            activeRole === 'PARENT'
                               ? "child's fees, attendance, bus..."
-                              : role === 'TEACHER'
+                              : activeRole === 'TEACHER'
                               ? 'class attendance, homework, exams...'
-                              : role === 'STUDENT'
+                              : activeRole === 'STUDENT'
                               ? 'timetable, homework, holidays...'
                               : 'school overview, fees, announcements...'
                           })`

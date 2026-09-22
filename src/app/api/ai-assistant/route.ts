@@ -61,12 +61,9 @@ export async function POST(req: NextRequest) {
 
     // 1. Resolve User Session & RBAC Role
     const session = await getServerSession(authOptions);
-    const role: string = (
-      (session?.user as any)?.role ||
-      body.role ||
-      'SUPER_ADMIN'
-    ).toUpperCase();
-    const userName: string = session?.user?.name || body.userName || 'User';
+    const sessionRole = (session?.user as any)?.role?.toUpperCase();
+    const role: string = (body.role || sessionRole || 'STUDENT').toUpperCase();
+    const userName: string = body.userName || session?.user?.name || (role === 'SUPER_ADMIN' ? 'Dr. Anand Swaroop Pathak' : 'User');
 
     // 2. Identify client for daily token rate-limiting
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'default_user';
@@ -217,7 +214,7 @@ GENERAL OPERATIONAL RULES:
    "I am Adam, the dedicated AI assistant for Vidyalaya School Management System (Powered by SRM ECO TECH). I can only assist with this school portal, student records, fee collection, attendance, schedules, announcements, and institute management. How can I help you with school operations today?"
 3. FORMAT COMPLIANCE: If the user asks for a specific format (e.g. "in chat form", "in table form", "bullet points", "as an SMS/WhatsApp announcement", "text chart"):
    - When asked for "chat form", provide natural conversational chat text.
-   - When asked for "charts", format text bar charts inside code fences (\`\`\`text ... \`\`\`) with clean labels and bracketed bars e.g. [████████████] so they render cleanly.
+   - When asked for "charts" or metric distributions, format each distribution item cleanly with labels, bracketed bars [████████████] and percentage/count (e.g. "Primary (Nursery - 5) [████████████] 45% (450 Students)") so our interface renders it as a modern visual progress bar chart.
 4. Keep answers concise, helpful, and professional within daily token allocations.
 `.trim();
 

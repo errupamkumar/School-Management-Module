@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Copy, Check, Terminal, ExternalLink } from 'lucide-react';
+import { Copy, Check, BarChart3, FileText, ExternalLink } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
@@ -10,13 +10,24 @@ interface MarkdownRendererProps {
   className?: string;
 }
 
+interface ChartItem {
+  label: string;
+  value: string;
+  percent: number;
+}
+
+interface ChartBlock {
+  title: string;
+  items: ChartItem[];
+}
+
 export default function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
   const [copiedCodeIdx, setCopiedCodeIdx] = useState<number | null>(null);
 
   const handleCopyCode = (code: string, idx: number) => {
     navigator.clipboard.writeText(code);
     setCopiedCodeIdx(idx);
-    toast.success('Code copied to clipboard');
+    toast.success('Copied to clipboard');
     setTimeout(() => setCopiedCodeIdx(null), 2000);
   };
 
@@ -55,27 +66,33 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
     <div className={cn('space-y-2.5 text-xs sm:text-sm leading-relaxed text-gray-800 dark:text-gray-200', className)}>
       {blocks.map((block, bIdx) => {
         if (block.type === 'code') {
+          // Check if this code block is actually a text bar chart (e.g. [████...] or percentages)
+          const chart = parseVisualChart(block.text);
+          if (chart.isChart) {
+            return renderVisualChartCard(chart, bIdx);
+          }
+
+          // Otherwise render clean, non-terminal code/text card
           return (
             <div
               key={`code-${bIdx}`}
-              className="my-3 rounded-2xl bg-slate-900 text-slate-100 border border-slate-800 shadow-md overflow-hidden font-mono"
+              className="my-3 rounded-2xl bg-gray-50 dark:bg-slate-900 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-slate-800 shadow-xs overflow-hidden font-mono"
             >
-              {/* Code header bar */}
-              <div className="flex items-center justify-between px-3.5 py-2 bg-slate-950/80 border-b border-slate-800 text-[11px] text-slate-400">
-                <div className="flex items-center gap-1.5 font-semibold text-purple-400 uppercase tracking-wider">
-                  <Terminal size={13} />
-                  <span>{block.lang || 'CHART / TEXT'}</span>
+              <div className="flex items-center justify-between px-3.5 py-1.5 bg-gray-100/70 dark:bg-slate-800/60 border-b border-gray-200/80 dark:border-slate-800 text-[11px] text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-1.5 font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
+                  <FileText size={13} />
+                  <span>{block.lang || 'SNIPPET'}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleCopyCode(block.text, bIdx)}
-                  className="flex items-center gap-1 hover:text-white transition-colors px-2 py-0.5 rounded-md hover:bg-slate-800"
+                  className="flex items-center gap-1 hover:text-purple-600 dark:hover:text-purple-300 transition-colors px-2 py-0.5 rounded-md hover:bg-white dark:hover:bg-slate-700"
                   title="Copy text"
                 >
                   {copiedCodeIdx === bIdx ? (
                     <>
-                      <Check size={12} className="text-emerald-400" />
-                      <span className="text-emerald-400 font-semibold text-[10px]">Copied</span>
+                      <Check size={12} className="text-emerald-500" />
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[10px]">Copied</span>
                     </>
                   ) : (
                     <>
@@ -86,9 +103,8 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
                 </button>
               </div>
 
-              {/* Code content */}
               <div className="p-3 sm:p-4 overflow-x-auto touch-scroll">
-                <pre className="font-mono text-[11px] sm:text-xs leading-relaxed text-emerald-300 dark:text-emerald-400 whitespace-pre">
+                <pre className="font-mono text-[11px] sm:text-xs leading-relaxed whitespace-pre text-gray-800 dark:text-gray-200">
                   {block.text}
                 </pre>
               </div>
@@ -103,11 +119,96 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
   );
 }
 
+// Smart Parser to convert [████...] text bar charts into visual UI chart components
+function parseVisualChart(text: string): { isChart: boolean; title: string; items: ChartItem[] } {
+  const lines = text.split('\n');
+  const items: ChartItem[] = [];
+  let title = '';
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Detect line pattern: "Label [█████...] 45% (450 Students)" or "Label [====] 93.1%"
+    const match = trimmed.match(/^(.*?)\s*\[[█=\-#\s]+\]\s*(.*)$/);
+    if (match) {
+      const label = match[1].replace(/[:\-]$/, '').trim();
+      const valStr = match[2].trim();
+      const pctMatch = valStr.match(/(\d+(\.\d+)?)%/);
+      const percent = pctMatch ? parseFloat(pctMatch[1]) : 50;
+      items.push({ label, value: valStr, percent });
+    } else if (items.length === 0 && !title) {
+      title = trimmed.replace(/[:\-]$/, '');
+    }
+  }
+
+  return { isChart: items.length > 0, title, items };
+}
+
+// Gorgeous Visual Progress Bar Chart Component
+function renderVisualChartCard(chart: ChartBlock, keyIdx: number) {
+  return (
+    <div
+      key={`visual-chart-${keyIdx}`}
+      className="my-3.5 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-50/40 via-white to-indigo-50/20 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-purple-100 dark:border-slate-800 shadow-sm space-y-3.5"
+    >
+      {chart.title && (
+        <div className="flex items-center justify-between pb-2 border-b border-purple-100/60 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-300 flex items-center justify-center shadow-xs">
+              <BarChart3 size={14} />
+            </div>
+            <h4 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-100">{chart.title}</h4>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300">
+            Visual Chart
+          </span>
+        </div>
+      )}
+
+      <div className="space-y-3 pt-0.5">
+        {chart.items.map((item, i) => {
+          const isNegative = /absent|due|unpaid|defaulter|overdue|drop/i.test(item.label);
+          const isPositive = /present|paid|active|regular|pass/i.test(item.label);
+
+          const gradient = isNegative
+            ? 'from-rose-500 to-pink-500'
+            : isPositive
+            ? 'from-emerald-500 to-teal-500'
+            : i === 0
+            ? 'from-purple-600 to-indigo-600'
+            : i === 1
+            ? 'from-blue-500 to-cyan-500'
+            : 'from-amber-500 to-orange-500';
+
+          return (
+            <div key={i} className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-gray-700 dark:text-gray-200">{item.label}</span>
+                <span className="font-bold text-gray-900 dark:text-gray-100 bg-white/90 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-gray-100 dark:border-slate-700 shadow-xs">
+                  {item.value}
+                </span>
+              </div>
+              <div className="w-full h-2.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 shadow-inner">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r ${gradient} transition-all duration-700 ease-out shadow-xs`}
+                  style={{ width: `${Math.min(100, Math.max(4, item.percent))}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Line-by-line parser for standard markdown elements
 function renderMarkdownLines(rawText: string) {
   const lines = rawText.split('\n');
   const elements: React.ReactNode[] = [];
   let tableRows: string[] = [];
+  let chartLines: string[] = [];
 
   const flushTable = () => {
     if (tableRows.length > 0) {
@@ -116,9 +217,28 @@ function renderMarkdownLines(rawText: string) {
     }
   };
 
+  const flushChart = () => {
+    if (chartLines.length > 0) {
+      const chart = parseVisualChart(chartLines.join('\n'));
+      if (chart.isChart) {
+        elements.push(renderVisualChartCard(chart, elements.length));
+      }
+      chartLines = [];
+    }
+  };
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
+
+    // Check for inline bar chart lines: [████...]
+    if (/\[[█=\-#\s]{3,}\]/.test(trimmed)) {
+      flushTable();
+      chartLines.push(trimmed);
+      continue;
+    } else if (chartLines.length > 0) {
+      flushChart();
+    }
 
     // Check for table lines
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
@@ -243,6 +363,7 @@ function renderMarkdownLines(rawText: string) {
   }
 
   flushTable();
+  flushChart();
   return elements;
 }
 
@@ -250,7 +371,6 @@ function renderMarkdownLines(rawText: string) {
 function renderTable(rows: string[], keyIdx: number) {
   if (rows.length < 2) return null;
 
-  // Split cells
   const parseRow = (r: string) =>
     r
       .split('|')
@@ -294,7 +414,6 @@ function renderTable(rows: string[], keyIdx: number) {
 
 // Inline Formatter for **bold**, *italic*, `code`, and [link](url)
 function renderInline(text: string): React.ReactNode {
-  // Regex to match: **bold**, *italic*, `code`, [text](url)
   const tokenRegex = /(\*\*.*?\*\*|\*.*?\*|`.*?`|\[.*?\]\(.*?\))/g;
   const parts = text.split(tokenRegex);
 
