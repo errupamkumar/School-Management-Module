@@ -34,6 +34,14 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 p-3 sm:p-5 md:p-6 w-full min-w-0 max-w-full overflow-x-hidden transition-all duration-200">
           {children}
         </main>
+        <footer className="px-4 py-3 sm:py-4 border-t border-gray-100 dark:border-slate-800 text-center flex flex-wrap items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <span>© 2026 Vidyalaya School Management System</span>
+          <span className="hidden sm:inline">•</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Powered by</span>
+            <img src="/srm-eco-tech.png" alt="SRM ECO TECH" className="h-4 sm:h-5 w-auto object-contain bg-white/95 rounded px-1 py-0.5 shadow-sm" />
+          </div>
+        </footer>
       </div>
     </div>
   );

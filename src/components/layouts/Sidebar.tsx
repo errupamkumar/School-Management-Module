@@ -166,18 +166,32 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* User / Logout */}
-      <div className="border-t border-white/10 p-3 flex-shrink-0 bg-sidebar-bg">
+      {/* User / Logout & Powered By */}
+      <div className="border-t border-white/10 p-3 flex-shrink-0 bg-sidebar-bg space-y-2">
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: '/login' })}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors focus:outline-none focus:ring-2 focus:ring-red-400/20"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors focus:outline-none focus:ring-2 focus:ring-red-400/20"
         >
-          <span className="flex-shrink-0"><Icons.LogOut size={20} /></span>
+          <span className="flex-shrink-0"><Icons.LogOut size={18} /></span>
           <span className={cn('truncate', isCollapsed && 'lg:hidden')}>
             {lang === 'hi' ? 'लॉग आउट' : 'Logout'}
           </span>
         </button>
+
+        {/* Powered By SRM ECO TECH */}
+        <div className="pt-2 border-t border-white/10 flex items-center justify-center">
+          {!isCollapsed ? (
+            <div className="flex items-center gap-1.5 opacity-90 hover:opacity-100 transition-opacity">
+              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Powered by</span>
+              <img src="/srm-eco-tech.png" alt="SRM ECO TECH" className="h-4 sm:h-5 w-auto object-contain bg-white/95 rounded px-1 py-0.5 shadow-sm" />
+            </div>
+          ) : (
+            <div className="hidden lg:flex items-center justify-center" title="Powered by SRM ECO TECH">
+              <img src="/srm-eco-tech.png" alt="SRM ECO TECH" className="h-3.5 w-auto object-contain bg-white/95 rounded px-0.5" />
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );

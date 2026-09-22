@@ -252,7 +252,12 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <p className="text-center text-xs text-gray-400 mt-6">© 2025 Vidyalaya School Management System. All rights reserved.</p>
+          <p className="text-center text-xs text-gray-400 mt-6">© 2026 Vidyalaya School Management System. All rights reserved.</p>
+
+          <div className="flex items-center justify-center gap-2 mt-3 pb-4">
+            <span className="text-xs text-gray-400 font-medium">Powered by</span>
+            <img src="/srm-eco-tech.png" alt="SRM ECO TECH" className="h-5 w-auto object-contain bg-white/90 rounded px-1.5 py-0.5 shadow-sm" />
+          </div>
         </div>
       </div>
     </div>

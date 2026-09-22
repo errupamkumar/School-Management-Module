@@ -6,6 +6,7 @@ export const sidebarItems: SidebarItem[] = [
   { title: 'Dashboard', titleHi: 'डैशबोर्ड', href: '/dashboard/teacher', icon: 'LayoutDashboard', roles: [Role.TEACHER] },
   { title: 'Dashboard', titleHi: 'डैशबोर्ड', href: '/dashboard/parent', icon: 'LayoutDashboard', roles: [Role.PARENT] },
   { title: 'Dashboard', titleHi: 'डैशबोर्ड', href: '/dashboard/student', icon: 'LayoutDashboard', roles: [Role.STUDENT] },
+  { title: 'AI Assistant', titleHi: 'एआई सहायक', href: '/ai-assistant', icon: 'Sparkles', roles: [Role.SUPER_ADMIN, Role.ADMIN, Role.TEACHER, Role.STUDENT, Role.PARENT, Role.ACCOUNTANT] },
   {
     title: 'Admission Management', titleHi: 'प्रवेश प्रबंधन', href: '/admission', icon: 'UserPlus',
     roles: [Role.SUPER_ADMIN, Role.ADMIN],
