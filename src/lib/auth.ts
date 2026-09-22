@@ -15,7 +15,7 @@ const DEMO_ACCOUNTS: Record<
   }
 > = {
   'admin@vidyalaya.com': {
-    passwords: ['admin123', 'Admin@123'],
+    passwords: ['admin123', 'Admin@123', 'admin', 'Admin123', 'admin@123'],
     role: 'SUPER_ADMIN',
     name: 'Dr. Anand Swaroop Pathak',
     id: 'demo-admin-id',
@@ -23,7 +23,7 @@ const DEMO_ACCOUNTS: Record<
     campusName: 'Vidyalaya Senior Secondary Campus',
   },
   'admin@school.com': {
-    passwords: ['Admin@123', 'admin123'],
+    passwords: ['Admin@123', 'admin123', 'admin', 'Admin123', 'admin@123'],
     role: 'SUPER_ADMIN',
     name: 'Administrator',
     id: 'demo-admin-id-2',
@@ -31,7 +31,7 @@ const DEMO_ACCOUNTS: Record<
     campusName: 'Vidyalaya Main Campus',
   },
   'teacher@vidyalaya.com': {
-    passwords: ['teacher123', 'Teacher@123'],
+    passwords: ['teacher123', 'Teacher@123', 'teacher', 'Teacher123', 'teacher@123'],
     role: 'TEACHER',
     name: 'Rajesh Khanna',
     id: 'demo-teacher-id',
@@ -39,7 +39,7 @@ const DEMO_ACCOUNTS: Record<
     campusName: 'Vidyalaya Senior Secondary Campus',
   },
   'teacher@school.com': {
-    passwords: ['Teacher@123', 'teacher123'],
+    passwords: ['Teacher@123', 'teacher123', 'teacher', 'Teacher123', 'teacher@123'],
     role: 'TEACHER',
     name: 'Sunita Sharma',
     id: 'demo-teacher-id-2',
@@ -47,7 +47,7 @@ const DEMO_ACCOUNTS: Record<
     campusName: 'Vidyalaya Main Campus',
   },
   'parent@vidyalaya.com': {
-    passwords: ['parent123', 'Parent@123'],
+    passwords: ['parent123', 'Parent@123', 'parent', 'Parent123', 'parent@123'],
     role: 'PARENT',
     name: 'Rajesh Mishra',
     id: 'demo-parent-id',
@@ -55,7 +55,7 @@ const DEMO_ACCOUNTS: Record<
     campusName: 'Vidyalaya Senior Secondary Campus',
   },
   'parent@school.com': {
-    passwords: ['Parent@123', 'parent123'],
+    passwords: ['Parent@123', 'parent123', 'parent', 'Parent123', 'parent@123'],
     role: 'PARENT',
     name: 'Pooja Verma (Guardian)',
     id: 'demo-parent-id-2',
@@ -63,7 +63,7 @@ const DEMO_ACCOUNTS: Record<
     campusName: 'Vidyalaya Main Campus',
   },
   'student@vidyalaya.com': {
-    passwords: ['student123', 'Student@123'],
+    passwords: ['student123', 'Student@123', 'student', 'Student123', 'student@123'],
     role: 'STUDENT',
     name: 'Aarav Sharma',
     id: 'demo-student-id',
@@ -71,7 +71,7 @@ const DEMO_ACCOUNTS: Record<
     campusName: 'Vidyalaya Senior Secondary Campus',
   },
   'student@school.com': {
-    passwords: ['Student@123', 'student123'],
+    passwords: ['Student@123', 'student123', 'student', 'Student123', 'student@123'],
     role: 'STUDENT',
     name: 'Diya Dubey',
     id: 'demo-student-id-2',
@@ -92,17 +92,47 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         const email = credentials.email.trim().toLowerCase();
-        const password = credentials.password;
+        const inputPassword = credentials.password.trim();
 
-        // 1. Check database first if available
+        // 1. FAST PATH: Check Demo Accounts first (0ms latency, zero risk of DB timeouts on cloud preview)
+        const demoUser = DEMO_ACCOUNTS[email];
+        if (
+          demoUser &&
+          demoUser.passwords.some(
+            (p) =>
+              p.toLowerCase() === inputPassword.toLowerCase() ||
+              p === credentials.password ||
+              p === inputPassword
+          )
+        ) {
+          return {
+            id: demoUser.id,
+            email: email,
+            role: demoUser.role,
+            name: demoUser.name,
+            campusId: demoUser.campusId,
+            campusName: demoUser.campusName,
+            language: 'en',
+            avatar: null,
+          };
+        }
+
+        // 2. Fallback to database lookup with timeout safeguard
         try {
-          const user = await prisma.user.findUnique({
+          const dbPromise = prisma.user.findUnique({
             where: { email },
             include: { campus: true, student: true, teacher: true, parent: true },
           });
 
+          // Abort after 3.5s if database is unreachable (e.g. localhost in serverless)
+          const timeoutPromise = new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error('DB lookup timed out')), 3500)
+          );
+
+          const user = (await Promise.race([dbPromise, timeoutPromise])) as any;
+
           if (user && user.isActive) {
-            const isValid = await bcrypt.compare(password, user.password);
+            const isValid = await bcrypt.compare(credentials.password, user.password);
             if (isValid) {
               return {
                 id: user.id,
@@ -121,22 +151,7 @@ export const authOptions: NextAuthOptions = {
             }
           }
         } catch (dbErr) {
-          console.warn('Database lookup failed, falling back to demo accounts:', dbErr);
-        }
-
-        // 2. Check Demo Accounts fallback (enables instant login on cloud preview/deployments)
-        const demoUser = DEMO_ACCOUNTS[email];
-        if (demoUser && demoUser.passwords.includes(password)) {
-          return {
-            id: demoUser.id,
-            email: email,
-            role: demoUser.role,
-            name: demoUser.name,
-            campusId: demoUser.campusId,
-            campusName: demoUser.campusName,
-            language: 'en',
-            avatar: null,
-          };
+          console.warn('Database lookup failed or timed out:', dbErr);
         }
 
         return null;
@@ -164,6 +179,13 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).avatar = token.avatar;
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith('/')) return url;
+      try {
+        if (new URL(url).origin === baseUrl) return url;
+      } catch {}
+      return baseUrl || '/';
     },
   },
   pages: {

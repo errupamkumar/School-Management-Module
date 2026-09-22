@@ -1,39 +1,70 @@
 'use client';
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { useState, useEffect } from 'react';
+import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
+  const { data: session, status } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingRole, setLoadingRole] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  const fillDemo = (demoEmail: string, demoPass: string) => {
+  // If already logged in, redirect directly to home/dashboard
+  useEffect(() => {
+    if (status === 'authenticated') {
+      window.location.href = '/';
+    }
+  }, [status]);
+
+  const executeSignIn = async (userEmail: string, userPass: string, roleName?: string) => {
+    const cleanEmail = userEmail.trim();
+    const cleanPassword = userPass.trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      toast.error('Please enter both email and password.');
+      return;
+    }
+
+    setLoading(true);
+    if (roleName) setLoadingRole(roleName);
+
+    try {
+      const result = await signIn('credentials', {
+        email: cleanEmail,
+        password: cleanPassword,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        console.error('Sign-in failed:', result.error);
+        toast.error('Invalid email or password');
+      } else {
+        toast.success('Login successful! Redirecting...');
+        // Full page navigation ensures session cookies are recognized and cache is refreshed
+        window.location.href = '/';
+      }
+    } catch (err) {
+      console.error('Sign-in exception:', err);
+      toast.error('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+      setLoadingRole(null);
+    }
+  };
+
+  const handleDemoLogin = (demoEmail: string, demoPass: string, roleName: string) => {
     setEmail(demoEmail);
     setPassword(demoPass);
-    toast.success('Credentials filled! Click Sign In.');
+    executeSignIn(demoEmail, demoPass, roleName);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    try {
-      const result = await signIn('credentials', { email: email.trim(), password, redirect: false });
-      if (result?.error) {
-        toast.error('Invalid email or password');
-      } else {
-        toast.success('Login successful!');
-        router.push('/');
-        router.refresh();
-      }
-    } catch {
-      toast.error('Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    await executeSignIn(email, password);
   };
 
   return (
@@ -80,14 +111,32 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="form-label">Email Address</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="form-input" placeholder="admin@vidyalaya.com" required />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="form-input"
+                  placeholder="admin@vidyalaya.com"
+                  required
+                />
               </div>
 
               <div>
                 <label className="form-label">Password</label>
                 <div className="relative">
-                  <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="form-input pr-10" placeholder="••••••••" required />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="form-input pr-10"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
                     {showPassword ? '🙈' : '👁️'}
                   </button>
                 </div>
@@ -102,49 +151,101 @@ export default function LoginPage() {
               </div>
 
               <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
-                {loading ? (
-                  <span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Signing in...</span>
-                ) : 'Sign In'}
+                {loading && !loadingRole ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Signing in...
+                  </span>
+                ) : (
+                  'Sign In'
+                )}
               </button>
             </form>
 
-            <div className="mt-6 p-4 bg-blue-50/70 border border-blue-100 rounded-xl">
+            {/* 1-Click Instant Login Grid */}
+            <div className="mt-6 p-4 bg-blue-50/80 border border-blue-200/80 rounded-xl">
               <div className="flex items-center justify-between mb-2.5">
-                <p className="text-xs font-semibold text-blue-900">Demo Logins (Click to auto-fill):</p>
-                <span className="text-[10px] bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded font-medium">1-Click</span>
+                <p className="text-xs font-bold text-blue-950 uppercase tracking-wide">
+                  ⚡ 1-Click Instant Demo Login:
+                </p>
+                <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-semibold">
+                  Instant
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => fillDemo('admin@vidyalaya.com', 'admin123')}
-                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-400 hover:bg-blue-50/60 transition-all text-xs shadow-sm"
+                  disabled={loading}
+                  onClick={() => handleDemoLogin('admin@vidyalaya.com', 'admin123', 'admin')}
+                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-500 hover:bg-blue-50/80 transition-all text-xs shadow-sm hover:shadow disabled:opacity-50 group"
                 >
-                  <div className="font-semibold text-gray-800">👑 Admin</div>
-                  <div className="text-[11px] text-gray-500 truncate">admin@vidyalaya.com</div>
+                  <div className="font-semibold text-gray-900 group-hover:text-blue-700 flex items-center justify-between">
+                    <span>👑 Admin</span>
+                    {loadingRole === 'admin' ? (
+                      <span className="text-[10px] text-blue-600 animate-pulse">Signing in...</span>
+                    ) : (
+                      <span className="text-[10px] text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Login →</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-gray-500 truncate mt-0.5">admin@vidyalaya.com</div>
+                  <div className="text-[10px] text-gray-400">Pass: admin123</div>
                 </button>
+
                 <button
                   type="button"
-                  onClick={() => fillDemo('teacher@vidyalaya.com', 'teacher123')}
-                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-400 hover:bg-blue-50/60 transition-all text-xs shadow-sm"
+                  disabled={loading}
+                  onClick={() => handleDemoLogin('teacher@vidyalaya.com', 'teacher123', 'teacher')}
+                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-500 hover:bg-blue-50/80 transition-all text-xs shadow-sm hover:shadow disabled:opacity-50 group"
                 >
-                  <div className="font-semibold text-gray-800">👨‍🏫 Teacher</div>
-                  <div className="text-[11px] text-gray-500 truncate">teacher@vidyalaya.com</div>
+                  <div className="font-semibold text-gray-900 group-hover:text-blue-700 flex items-center justify-between">
+                    <span>👨‍🏫 Teacher</span>
+                    {loadingRole === 'teacher' ? (
+                      <span className="text-[10px] text-blue-600 animate-pulse">Signing in...</span>
+                    ) : (
+                      <span className="text-[10px] text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Login →</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-gray-500 truncate mt-0.5">teacher@vidyalaya.com</div>
+                  <div className="text-[10px] text-gray-400">Pass: teacher123</div>
                 </button>
+
                 <button
                   type="button"
-                  onClick={() => fillDemo('parent@vidyalaya.com', 'parent123')}
-                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-400 hover:bg-blue-50/60 transition-all text-xs shadow-sm"
+                  disabled={loading}
+                  onClick={() => handleDemoLogin('parent@vidyalaya.com', 'parent123', 'parent')}
+                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-500 hover:bg-blue-50/80 transition-all text-xs shadow-sm hover:shadow disabled:opacity-50 group"
                 >
-                  <div className="font-semibold text-gray-800">👨‍👩‍👦 Parent</div>
-                  <div className="text-[11px] text-gray-500 truncate">parent@vidyalaya.com</div>
+                  <div className="font-semibold text-gray-900 group-hover:text-blue-700 flex items-center justify-between">
+                    <span>👨‍👩‍👦 Parent</span>
+                    {loadingRole === 'parent' ? (
+                      <span className="text-[10px] text-blue-600 animate-pulse">Signing in...</span>
+                    ) : (
+                      <span className="text-[10px] text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Login →</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-gray-500 truncate mt-0.5">parent@vidyalaya.com</div>
+                  <div className="text-[10px] text-gray-400">Pass: parent123</div>
                 </button>
+
                 <button
                   type="button"
-                  onClick={() => fillDemo('student@school.com', 'Student@123')}
-                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-400 hover:bg-blue-50/60 transition-all text-xs shadow-sm"
+                  disabled={loading}
+                  onClick={() => handleDemoLogin('student@school.com', 'Student@123', 'student')}
+                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-500 hover:bg-blue-50/80 transition-all text-xs shadow-sm hover:shadow disabled:opacity-50 group"
                 >
-                  <div className="font-semibold text-gray-800">🎓 Student</div>
-                  <div className="text-[11px] text-gray-500 truncate">student@school.com</div>
+                  <div className="font-semibold text-gray-900 group-hover:text-blue-700 flex items-center justify-between">
+                    <span>🎓 Student</span>
+                    {loadingRole === 'student' ? (
+                      <span className="text-[10px] text-blue-600 animate-pulse">Signing in...</span>
+                    ) : (
+                      <span className="text-[10px] text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Login →</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-gray-500 truncate mt-0.5">student@school.com</div>
+                  <div className="text-[10px] text-gray-400">Pass: Student@123</div>
                 </button>
               </div>
             </div>
