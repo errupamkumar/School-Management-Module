@@ -7,6 +7,8 @@
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Google Gemini](https://img.shields.io/badge/AI-Google_Gemini-8E75C2?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Powered by SRM ECO TECH](https://img.shields.io/badge/Powered_by-SRM_ECO_TECH-00A86B?style=for-the-badge)](https://srmecotech.com)
 [![Prisma ORM](https://img.shields.io/badge/Prisma-5.14-2D3748?style=for-the-badge&logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![NextAuth.js](https://img.shields.io/badge/Auth-NextAuth.js-purple?style=for-the-badge&logo=next.js&logoColor=white)](https://next-auth.js.org/)
@@ -14,9 +16,9 @@
 
 <br/>
 
-**Vidyalaya** is a comprehensive, production-ready, full-stack School ERP system engineered specifically for Indian Schools, Colleges, and Educational Institutes (CBSE, ICSE & State Boards). Featuring a bilingual interface (English / हिंदी), dark/light mode, dual dashboard architecture (Modern Analytics & Classic ERP views), multi-campus support, and dedicated portals for Admins, Teachers, Parents, and Students.
+**Vidyalaya** is a comprehensive, production-ready, full-stack School ERP system engineered specifically for Indian Schools, Colleges, and Educational Institutes (CBSE, ICSE & State Boards). Featuring a bilingual interface (English / हिंदी), dark/light mode, dual dashboard architecture (Modern Analytics & Classic ERP views), multi-campus support, and dedicated portals for Admins, Teachers, Parents, and Students — now supercharged with a role-aware **AI Assistant Copilot** powered by **Google Gemini** & **SRM ECO TECH**.
 
-[Explore Features](#-features-matrix) • [UI Showcase](#-ui-showcase--screenshots) • [Demo Logins](#-demo-accounts--credentials) • [Quick Start](#-quick-start-guide) • [Architecture](#-architecture--tech-stack) • [Documentation](#-project-documentation)
+[Explore Features](#-features-matrix) • [AI Assistant](#-intelligent-school-ai-copilot-powered-by-google-gemini--srm-eco-tech) • [UI Showcase](#-ui-showcase--screenshots) • [Demo Logins](#-demo-accounts--credentials) • [Quick Start](#-quick-start-guide) • [Architecture](#-architecture--tech-stack)
 
 <br/>
 
@@ -39,6 +41,7 @@
 
 - [✨ Key Highlights](#-key-highlights)
 - [📸 UI Showcase & Screenshots](#-ui-showcase--screenshots)
+- [🤖 Intelligent School AI Copilot](#-intelligent-school-ai-copilot-powered-by-google-gemini--srm-eco-tech)
 - [🧩 Features Matrix](#-features-matrix)
 - [👥 Role-Based Portals & RBAC](#-role-based-portals--rbac)
 - [🔑 Demo Accounts & Credentials](#-demo-accounts--credentials)
@@ -55,6 +58,7 @@
 
 ## ✨ Key Highlights
 
+- 🤖 **Context-Aware AI School Copilot**: Powered by **Google Gemini** & **SRM ECO TECH** with dynamic role personas (*Admin Copilot*, *Teacher Copilot*, *Parent Portal Assistant*, *Student Study Companion*), live speech recognition, voice wake, and 1,000,000 tokens/day quota.
 - 🇮🇳 **Tailored for Indian Education Ecosystem**: Pre-configured for CBSE, ICSE, and State Board grading patterns, academic sessions (April–March), Indian address & contact formats, and INR (`₹`) financial tracking.
 - 🌐 **Instant Bilingual Support (English & हिंदी)**: Live language toggle with complete localized translation dictionaries across the entire application.
 - 🌓 **Adaptive Dual Theme (Light & Sleek Dark Mode)**: Premium Tailwind design system with automated system preference detection and persistent local storage state.
@@ -71,6 +75,12 @@
 ## 📸 UI Showcase & Screenshots
 
 <div align="center">
+
+### 🤖 Intelligent School AI Copilot (Powered by Google Gemini & SRM ECO TECH)
+| Enterprise Role-Aware AI Assistant & Workspace |
+| :---: |
+| <img src="docs/screenshots/15_ai_assistant.png" width="900" alt="Vidyalaya AI Assistant" /> |
+| *Personalized Persona Matching: Admin Copilot, Teacher Copilot, Parent Portal Assistant & Student Study Companion with live token tracking and voice wake* |
 
 ### 🔐 Authentication & Onboarding
 | Modern Split-Screen Login | Multi-Step Admission Form |
@@ -112,7 +122,44 @@
 
 ---
 
+## 🤖 Intelligent School AI Copilot (Powered by Google Gemini & SRM ECO TECH)
+
+<div align="center">
+  <img src="docs/screenshots/15_ai_assistant.png" width="95%" alt="Vidyalaya AI Assistant Copilot" style="border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
+</div>
+
+<br/>
+
+Vidyalaya features a dedicated **AI Assistant Copilot** built using **Google Gemini** and powered by **SRM ECO TECH**. Unlike generic chat bots, the assistant dynamically adjusts its identity, permissions, and tone to the authenticated user's role and profile name:
+
+### 🎭 Role-Specific Persona Engine
+| Role | Persona Name | Persona Scope Title | Key AI Capabilities |
+| :--- | :--- | :--- | :--- |
+| **👑 Super Admin / Admin** | **Admin Copilot** | Executive School Assistant | Executive attendance statistics, fee collection & dues analytics, payroll reports, automated WhatsApp/SMS drafts, school-wide announcements. |
+| **👨‍🏫 Teacher** | **Teacher Copilot** | Academic & Classroom Assistant | Daily class attendance rosters, absent student follow-up messages, syllabus tracking, homework assignment drafts, exam blueprints & grading rubrics. |
+| **👨‍👩‍👦 Parent** | **Parent Portal Assistant** | Student Care & Guardian Companion | Ward attendance records, Term 1 & Term 2 fee receipts, payment instructions, school bus timings, PTM notices, leave applications. |
+| **🎓 Student** | **Student Study Companion** | Learning & Timetable Assistant | Daily period schedule, pending homework reminders, exam datesheets, study tips, and academic concept explanations. |
+
+### 🛡️ Enterprise RBAC Security & Data Protection
+- **No Client Privilege Elevation**: Access permissions are strictly resolved server-side from `getServerSession(authOptions)`.
+- **Confidential Data Isolation**: Non-admin users (Teachers, Parents, Students) are strictly prevented from querying institutional fee balances (e.g. ₹4.85L dues), school-wide profit/revenue, or staff payroll.
+- **Strict School-Only Grounding**: The AI is grounded to institutional records and politely declines out-of-scope questions (recipes, generic programming, world news).
+
+### ⚡ Performance, Quota & Audio Architecture
+- **Multi-Model Gemini Fallback**: Cascade resilience across `gemini-3.5-flash-lite`, `gemini-3.6-flash`, and `gemini-3.7-flash`.
+- **Daily Quota Manager**: 1,000,000 tokens/day rate-limiting with real-time UI balance countdown.
+- **Hands-Free Voice Wake & Speech-to-Text**: Web Speech API integration for instant voice input and hands-free voice wake activation.
+- **Rich Markdown Formatting**: Clean, responsive layout that formats natural conversations, structured bullet lists, and tables without raw block character artifacts.
+
+---
+
 ## 🧩 Features Matrix
+
+### 🤖 AI Assistant & Intelligent Automation
+- **Multi-Role Persona Adaptation**: Auto-configured for Admin, Teacher, Parent, and Student profiles with personalized greetings.
+- **Speech Recognition & Voice Wake**: Talk directly to the copilot with hands-free audio recognition.
+- **Automated Communication Drafting**: One-click generation of WhatsApp/SMS fee reminders, absent notices, and circulars.
+- **Markdown & Structured Visual Parser**: Native support for chat, tabular data, and formatted summaries.
 
 ### 🎓 Academic Operations
 - **Student Information System (SIS)**: 360-degree profiles including blood group, Aadhaar number, emergency contacts, medical records, and document attachments.
@@ -155,6 +202,7 @@
 
 | Module / Privilege | Super Admin | School Admin | Teacher | Accountant | Parent | Student |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **AI Assistant Copilot** | 👑 Admin Copilot | 👑 Admin Copilot | 👨‍🏫 Teacher Copilot | 👑 Admin Copilot | 👨‍👩‍👦 Parent Assistant | 🎓 Study Companion |
 | **Multi-Campus Settings** | ✅ Full | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **User & Staff Management** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ | ❌ |
 | **Student Admissions & SIS** | ✅ Full | ✅ Full | 👁️ View | ❌ | ❌ | ❌ |
@@ -214,6 +262,7 @@ graph TD
 |:---|:---|:---|
 | **Framework** | [Next.js 14](https://nextjs.org/) | App Router, Server Components, Route Handlers, Optimization |
 | **Language** | [TypeScript 5](https://www.typescriptlang.org/) | End-to-end type safety across UI, APIs, and Database models |
+| **AI & LLM Engine** | [Google Gemini](https://ai.google.dev/) (REST API) | Multi-model cascade (3.5/3.6/3.7) with daily rate-limiting & voice wake |
 | **Styling** | [Tailwind CSS 3](https://tailwindcss.com/) | Modern UI system, Glassmorphism, Responsive Grid, Dark Mode |
 | **Icons & UI** | [Lucide React](https://lucide.dev/) | Clean, consistent, lightweight SVG iconography |
 | **ORM** | [Prisma 5.14](https://www.prisma.io/) | Type-safe schema definition, automated migrations, fast relations |
@@ -259,6 +308,9 @@ NEXTAUTH_URL="http://localhost:3000"
 # Application Metadata
 NEXT_PUBLIC_APP_NAME="Vidyalaya - School Management System"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# AI Assistant Copilot (Optional: Built-in runtime key fallback available)
+GEMINI_API_KEY="your-gemini-api-key"
 ```
 
 ### 4. Install Dependencies
@@ -302,6 +354,7 @@ Visit **[http://localhost:3000](http://localhost:3000)** in your browser!
 | `DATABASE_URL` | **Yes** | Connection string for PostgreSQL or MySQL | `postgresql://user:pass@localhost:5432/school_db` |
 | `NEXTAUTH_SECRET`| **Yes** | Cryptographic secret for signing JWT auth tokens | `openssl rand -base64 32` |
 | `NEXTAUTH_URL` | **Yes** | Canonical URL of the application | `http://localhost:3000` |
+| `GEMINI_API_KEY` | No | Google Gemini API key for Vidyalaya AI Assistant | `AIzaSy...` (Built-in runtime key fallback) |
 | `NEXT_PUBLIC_APP_NAME` | No | Display name used in headers and receipts | `Vidyalaya - School Management System` |
 | `SMTP_HOST` | No | Outgoing SMTP host for email circulars | `smtp.gmail.com` |
 | `SMTP_PORT` | No | Outgoing SMTP port | `587` |
@@ -317,7 +370,7 @@ Visit **[http://localhost:3000](http://localhost:3000)** in your browser!
 ```plaintext
 School-Management-Module/
 ├── docs/                             # Comprehensive project documentation
-│   ├── screenshots/                  # 14 high-resolution application screenshots
+│   ├── screenshots/                  # 15 high-resolution application screenshots
 │   ├── BRD-School-Management-System.md # Full Business Requirements Document (BRD)
 │   ├── DEPLOYMENT_GUIDE.md           # Production deployment instructions
 │   └── Walkthrough.md                # Quick local setup walkthrough
@@ -330,7 +383,8 @@ School-Management-Module/
 │   │   ├── (auth)/login/             # Split-screen role-aware login page
 │   │   ├── accounting/               # Income, expense, vouchers & ledgers
 │   │   ├── admission/                # Multi-step student admission workflow
-│   │   ├── api/                      # REST API route handlers
+│   │   ├── ai-assistant/             # Role-aware AI Assistant Copilot & workspace
+│   │   ├── api/                      # REST API route handlers (including AI assistant)
 │   │   ├── attendance/               # Student & teacher attendance registers
 │   │   ├── biometric/                # Biometric device sync logs & API
 │   │   ├── campus/                   # Multi-campus configuration
@@ -362,6 +416,7 @@ School-Management-Module/
 │   ├── components/                   # Reusable UI & Layout Components
 │   │   ├── common/                   # Badges, modals, data tables, search inputs
 │   │   ├── layout/                   # Navbar, Sidebar, Footer, View Switcher
+│   │   ├── ui/                       # MarkdownRenderer and specialized UI parsers
 │   │   └── providers/                # ThemeProvider, LanguageProvider, AuthProvider
 │   ├── lib/                          # Prisma client, auth options, utils
 │   ├── types/                        # TypeScript interfaces & enum declarations
@@ -397,7 +452,7 @@ Detailed guides and specifications are organized inside the [`docs/`](docs/) dir
 - 📖 **[Business Requirements Document (BRD)](docs/BRD-School-Management-System.md)**: Exhaustive functional specification, user personas, flowcharts, and system requirements.
 - 🚀 **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)**: Step-by-step instructions for deploying to Vercel, VPS (Ubuntu/PM2), Docker containers, and managed PostgreSQL databases.
 - 🛠️ **[Local Setup Walkthrough](docs/Walkthrough.md)**: Concise developer onboarding instructions.
-- 🖼️ **[Screenshots Gallery](docs/screenshots/)**: Collection of 14 high-resolution UI screen captures.
+- 🖼️ **[Screenshots Gallery](docs/screenshots/)**: Collection of 15 high-resolution UI screen captures.
 
 ---
 
