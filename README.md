@@ -3,6 +3,8 @@
 # 🏫 Vidyalaya - Enterprise School Management System
 ### *Next-Generation Cloud ERP & Academic Management Platform for Modern Institutions*
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Vercel-success?style=for-the-badge&logo=vercel)](https://school-management-module.vercel.app)
+[![Demo Guide PDF](https://img.shields.io/badge/Demo_Guide-Download_PDF-red?style=for-the-badge&logo=adobe-acrobat-reader)](docs/Vidyalaya-School-Management-System-Demo-Guide.pdf)
 [![Next.js](https://img.shields.io/badge/Next.js-14.2-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -18,7 +20,9 @@
 
 **Vidyalaya** is a comprehensive, production-ready, full-stack School ERP system engineered specifically for Indian Schools, Colleges, and Educational Institutes (CBSE, ICSE & State Boards). Featuring a bilingual interface (English / हिंदी), dark/light mode, dual dashboard architecture (Modern Analytics & Classic ERP views), multi-campus support, and dedicated portals for Admins, Teachers, Parents, and Students — now supercharged with a role-aware **AI Assistant Copilot** powered by **Google Gemini** & **SRM ECO TECH**.
 
-[Explore Features](#-features-matrix) • [AI Assistant](#-intelligent-school-ai-copilot-powered-by-google-gemini--srm-eco-tech) • [UI Showcase](#-ui-showcase--screenshots) • [Demo Logins](#-demo-accounts--credentials) • [Quick Start](#-quick-start-guide) • [Architecture](#-architecture--tech-stack)
+> 📄 **Interactive PDF Demo Guide Available**: Download the comprehensive 12-page [**Vidyalaya Demo Guide & Walkthrough (PDF)**](docs/Vidyalaya-School-Management-System-Demo-Guide.pdf) or explore the [**Markdown Companion Guide**](docs/Vidyalaya-School-Management-System-Demo-Guide.md) featuring step-by-step indexed screenshots, complete RBAC matrix, and detailed feature breakdowns.
+
+[Live Demo](https://school-management-module.vercel.app) • [PDF Demo Guide](docs/Vidyalaya-School-Management-System-Demo-Guide.pdf) • [Explore Features](#-features-matrix) • [AI Assistant](#-intelligent-school-ai-copilot-powered-by-google-gemini--srm-eco-tech) • [UI Showcase](#-ui-showcase--screenshots) • [Demo Logins](#-demo-accounts--credentials) • [Quick Start](#-quick-start-guide)
 
 <br/>
 
@@ -40,6 +44,7 @@
 ## 📑 Table of Contents
 
 - [✨ Key Highlights](#-key-highlights)
+- [📄 PDF Demo Guide & Walkthrough](#-pdf-demo-guide--walkthrough)
 - [📸 UI Showcase & Screenshots](#-ui-showcase--screenshots)
 - [🤖 Intelligent School AI Copilot](#-intelligent-school-ai-copilot-powered-by-google-gemini--srm-eco-tech)
 - [🧩 Features Matrix](#-features-matrix)
@@ -53,6 +58,45 @@
 - [📚 Project Documentation](#-project-documentation)
 - [🔒 Security & Compliance](#-security--compliance)
 - [🤝 Contributing & License](#-contributing--license)
+
+---
+
+## 📄 PDF Demo Guide & Walkthrough
+
+A complete, 12-page enterprise presentation and onboarding guide is available with step-by-step screenshots, hierarchical indexing, technology stack descriptions, deployed URL, and role-based access control matrix:
+
+- 📥 **Download Document**: [**Vidyalaya-School-Management-System-Demo-Guide.pdf**](docs/Vidyalaya-School-Management-System-Demo-Guide.pdf) *(5.2 MB, 12 Pages, 15 High-Resolution Screenshots)*
+- 📖 **Online Companion**: [**Vidyalaya-School-Management-System-Demo-Guide.md**](docs/Vidyalaya-School-Management-System-Demo-Guide.md)
+- ⚙️ **Rebuild Script**: Run `npm run docs:pdf` to regenerate the PDF from current codebase and screenshots.
+
+### PDF Document Index (Table of Contents):
+1. **Executive Overview & Product Identity** (Enterprise overview, live URL: `https://school-management-module.vercel.app`, GitHub repo, SRM ECO TECH branding)
+2. **Technology Stack & Architecture Matrix** (Frontend, Backend, Database, AI Engine, Hosting)
+3. **Role-Based Access Control (RBAC) Matrix** (Admin, Teacher, Parent, Student permissions)
+4. **Authentication & Session Security** (Demo credentials, JWT tokens, session isolation)
+5. **Step-by-Step UI Showcase (Screenshots 01 – 15)**
+   - Screen 01: Secure Dual-Portal Login
+   - Screen 02: Admin Modern Analytics Dashboard
+   - Screen 03: Admin Classic ERP Operations Hub
+   - Screen 04: Comprehensive Student Directory & Admission
+   - Screen 05: Faculty & Staff Directory
+   - Screen 06: Student Attendance Tracker
+   - Screen 07: Academic Examinations & Marksheet
+   - Screen 08: Fee Collection & Financial Analytics
+   - Screen 09: Dynamic Timetable & Scheduling
+   - Screen 10: Teacher Academic Portal
+   - Screen 11: Parent Multi-Ward Portal
+   - Screen 12: Student Academic Portal
+   - Screen 13: Institution Settings & System Configuration
+   - Screen 14: Mobile Responsive Experience (Android / iOS)
+   - Screen 15: AI Assistant Copilot (Google Gemini & SRM ECO TECH)
+6. **Detailed Explanation of Recent Enhancements**
+   - Role-Aware AI Copilot with Daily Token Safety Governor
+   - Session-Enforced Role-Based Access Control (RBAC)
+   - Unicode Cleanliness & Layout Standardization (resolved "bullar" issue)
+   - Attendance Workflow Optimization
+   - Fully Responsive Mobile / Tablet Layouts
+7. **Production Deployment & Cloud Infrastructure**
 
 ---
 
@@ -442,6 +486,7 @@ School-Management-Module/
 | `npm run db:migrate` | Runs Prisma database migrations (recommended for production) |
 | `npm run db:seed` | Populates the database with default campuses, users, and dummy data |
 | `npm run db:studio` | Launches Prisma Studio GUI at `http://localhost:5555` |
+| `npm run docs:pdf` | Regenerates the 12-page PDF Demo Walkthrough Guide (`docs/Vidyalaya-School-Management-System-Demo-Guide.pdf`) |
 
 ---
 
@@ -449,6 +494,8 @@ School-Management-Module/
 
 Detailed guides and specifications are organized inside the [`docs/`](docs/) directory:
 
+- 📄 **[PDF Demo Walkthrough Guide](docs/Vidyalaya-School-Management-System-Demo-Guide.pdf)**: 12-page indexed PDF with step-by-step screenshots, RBAC matrix & tech stack.
+- 📑 **[Markdown Demo Walkthrough Guide](docs/Vidyalaya-School-Management-System-Demo-Guide.md)**: Web-friendly companion guide with embedded screenshots.
 - 📖 **[Business Requirements Document (BRD)](docs/BRD-School-Management-System.md)**: Exhaustive functional specification, user personas, flowcharts, and system requirements.
 - 🚀 **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)**: Step-by-step instructions for deploying to Vercel, VPS (Ubuntu/PM2), Docker containers, and managed PostgreSQL databases.
 - 🛠️ **[Local Setup Walkthrough](docs/Walkthrough.md)**: Concise developer onboarding instructions.
