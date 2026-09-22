@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
+import { useSession } from 'next-auth/react';
 import {
   Sparkles,
   Plus,
@@ -16,7 +18,14 @@ import {
   Copy,
   Check,
   AlertCircle,
-  HelpCircle,
+  BookOpen,
+  CalendarCheck,
+  FileQuestion,
+  Receipt,
+  Bus,
+  Clock,
+  GraduationCap,
+  ShieldCheck,
   ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/utils/helpers';
@@ -37,6 +46,11 @@ interface RecentChat {
 }
 
 export default function AIAssistantPage() {
+  const { data: session } = useSession();
+  const user = session?.user as any;
+  const role: string = (user?.role || 'SUPER_ADMIN').toUpperCase();
+  const userName: string = user?.name || 'Administrator';
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isThinking, setIsThinking] = useState(false);
@@ -50,20 +64,72 @@ export default function AIAssistantPage() {
   const [tokensUsedToday, setTokensUsedToday] = useState<number>(0);
   const [dailyLimit, setDailyLimit] = useState<number>(1000000);
 
-  const [recentChats, setRecentChats] = useState<RecentChat[]>([
-    {
-      id: 'chat-1',
-      title: 'Fee Collection Summary',
-      date: 'Today',
-      preview: 'Analyzed Class 10th pending dues & revenue...',
-    },
-    {
-      id: 'chat-2',
-      title: 'Pending Fee Reminder in Chat Form',
-      date: 'Today',
-      preview: 'Generated WhatsApp chat message draft...',
-    },
-  ]);
+  // Dynamic Recent Chats based on role
+  const [recentChats, setRecentChats] = useState<RecentChat[]>([]);
+
+  useEffect(() => {
+    if (role === 'TEACHER') {
+      setRecentChats([
+        {
+          id: 'chat-t1',
+          title: 'Class 10 Math Revision Plan',
+          date: 'Today',
+          preview: 'Drafted homework and study checklist...',
+        },
+        {
+          id: 'chat-t2',
+          title: 'Science Lab Rubric',
+          date: 'Yesterday',
+          preview: 'Created practical examination rubric...',
+        },
+      ]);
+    } else if (role === 'PARENT') {
+      setRecentChats([
+        {
+          id: 'chat-p1',
+          title: 'Term 2 Fee Schedule',
+          date: 'Today',
+          preview: 'Checked payment due date & receipt...',
+        },
+        {
+          id: 'chat-p2',
+          title: 'Bus Route 4 Timing',
+          date: 'Yesterday',
+          preview: 'Verified morning pickup & drop schedule...',
+        },
+      ]);
+    } else if (role === 'STUDENT') {
+      setRecentChats([
+        {
+          id: 'chat-s1',
+          title: 'Today’s Class Timetable',
+          date: 'Today',
+          preview: 'Checked period timings and subjects...',
+        },
+        {
+          id: 'chat-s2',
+          title: 'Exam Datesheet Overview',
+          date: 'Yesterday',
+          preview: 'Reviewed Half-Yearly test schedule...',
+        },
+      ]);
+    } else {
+      setRecentChats([
+        {
+          id: 'chat-a1',
+          title: 'Fee Collection Summary',
+          date: 'Today',
+          preview: 'Analyzed Class 10th pending dues & revenue...',
+        },
+        {
+          id: 'chat-a2',
+          title: 'Pending Fee Reminder in Chat Form',
+          date: 'Today',
+          preview: 'Generated WhatsApp chat message draft...',
+        },
+      ]);
+    }
+  }, [role]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -151,7 +217,7 @@ export default function AIAssistantPage() {
     if (!query) return;
 
     if (tokensRemaining <= 0) {
-      toast.error('Daily limit of 1,000 tokens reached for today. Resets at midnight.');
+      toast.error('Daily limit of 1,000,000 tokens reached for today. Resets at midnight.');
       return;
     }
 
@@ -173,6 +239,9 @@ export default function AIAssistantPage() {
         body: JSON.stringify({
           message: query,
           history: messages.slice(-4).map((m) => ({ sender: m.sender, text: m.text })),
+          role,
+          userName,
+          userEmail: user?.email,
         }),
       });
 
@@ -208,7 +277,7 @@ export default function AIAssistantPage() {
       } else {
         if (data.error === 'DAILY_LIMIT_EXCEEDED') {
           setTokensRemaining(0);
-          toast.error('Daily limit of 1,000 tokens reached. Resets at midnight.');
+          toast.error('Daily limit reached. Resets at midnight.');
         } else {
           toast.error(data.message || 'Unable to connect to Adam.');
         }
@@ -228,74 +297,143 @@ export default function AIAssistantPage() {
     }
   };
 
-  // Helper to format assistant markdown text cleanly
-  const renderFormattedText = (rawText: string) => {
-    // Split into paragraphs / lines
-    const lines = rawText.split('\n');
+  // Role-Based Starter Prompt Cards
+  const getStarterPrompts = () => {
+    if (role === 'TEACHER') {
+      return [
+        {
+          id: 't1',
+          icon: <BookOpen size={20} />,
+          title: 'Class homework & lesson plan',
+          desc: 'Draft structured homework assignments & revision schedule for my class',
+          accent: 'purple',
+          prompt: 'Draft a homework assignment and revision plan for Class 10 Mathematics in chat form',
+        },
+        {
+          id: 't2',
+          icon: <CalendarCheck size={20} />,
+          title: 'Class attendance & absent follow-up',
+          desc: "Review today's student attendance roster and absent follow-up notes",
+          accent: 'emerald',
+          prompt: "What is today's attendance summary for my class and draft a follow up message for absent students?",
+        },
+        {
+          id: 't3',
+          icon: <FileQuestion size={20} />,
+          title: 'Exam blueprint & question rubric',
+          desc: 'Generate half-yearly test questions blueprint & grading criteria',
+          accent: 'amber',
+          prompt: 'Generate an examination question paper blueprint and grading rubric for Class 10 Science',
+        },
+      ];
+    }
 
-    return (
-      <div className="space-y-2 text-xs sm:text-sm leading-relaxed">
-        {lines.map((line, idx) => {
-          const trimmed = line.trim();
-          if (!trimmed) {
-            return <div key={idx} className="h-1" />;
-          }
+    if (role === 'PARENT') {
+      return [
+        {
+          id: 'p1',
+          icon: <Receipt size={20} />,
+          title: "My child's fee status & dues",
+          desc: 'Check pending term fees, payment receipts & upcoming due dates',
+          accent: 'purple',
+          prompt: "What is my child's current fee status, upcoming due date, and payment instructions?",
+        },
+        {
+          id: 'p2',
+          icon: <CalendarCheck size={20} />,
+          title: "Child's attendance & leave application",
+          desc: 'Check monthly attendance percentage and draft a student leave letter',
+          accent: 'emerald',
+          prompt: "Show my child's attendance record and help me draft a leave application for 2 days",
+        },
+        {
+          id: 'p3',
+          icon: <Bus size={20} />,
+          title: 'School bus & exam timetable',
+          desc: 'Check transport route timings, school holidays & examination datesheet',
+          accent: 'amber',
+          prompt: 'What are the school bus timings for Route 4 and when do the half-yearly exams start?',
+        },
+      ];
+    }
 
-          // Headers
-          if (trimmed.startsWith('### ')) {
-            return (
-              <h5 key={idx} className="font-bold text-sm sm:text-base text-purple-700 dark:text-purple-300 pt-1">
-                {trimmed.replace('### ', '')}
-              </h5>
-            );
-          }
-          if (trimmed.startsWith('## ')) {
-            return (
-              <h4 key={idx} className="font-extrabold text-sm sm:text-base text-gray-900 dark:text-gray-100 pt-1">
-                {trimmed.replace('## ', '')}
-              </h4>
-            );
-          }
+    if (role === 'STUDENT') {
+      return [
+        {
+          id: 's1',
+          icon: <Clock size={20} />,
+          title: 'My daily timetable & exams',
+          desc: 'Check today’s class periods, subject timings & upcoming tests',
+          accent: 'purple',
+          prompt: 'What is my timetable for today and upcoming exam datesheet?',
+        },
+        {
+          id: 's2',
+          icon: <GraduationCap size={20} />,
+          title: 'Pending homework assignments',
+          desc: 'Review homework tasks and revision resources for my class',
+          accent: 'emerald',
+          prompt: 'What are my pending homework assignments for this week?',
+        },
+        {
+          id: 's3',
+          icon: <CalendarCheck size={20} />,
+          title: 'My attendance & holiday calendar',
+          desc: 'Check your personal attendance percentage and upcoming holidays',
+          accent: 'amber',
+          prompt: 'Show my attendance percentage and upcoming school holidays',
+        },
+      ];
+    }
 
-          // Bullet points
-          if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-            const content = trimmed.substring(2);
-            return (
-              <div key={idx} className="flex items-start gap-2 pl-2">
-                <span className="text-purple-500 font-bold mt-1 text-xs">•</span>
-                <span className="flex-1">{formatInlineStyles(content)}</span>
-              </div>
-            );
-          }
-
-          // Horizontal rule
-          if (trimmed === '***' || trimmed === '---') {
-            return <hr key={idx} className="my-2 border-gray-200 dark:border-slate-700" />;
-          }
-
-          // Default paragraph
-          return (
-            <p key={idx} className="text-gray-800 dark:text-gray-200">
-              {formatInlineStyles(line)}
-            </p>
-          );
-        })}
-      </div>
-    );
+    // Default for SUPER_ADMIN / ADMIN / ACCOUNTANT
+    return [
+      {
+        id: 'a1',
+        icon: <PieChart size={20} />,
+        title: 'School report with charts',
+        desc: 'Students, fees, attendance & financial metrics visualized',
+        accent: 'purple',
+        prompt: 'Give school report with charts for students, attendance and fee overview',
+      },
+      {
+        id: 'a2',
+        icon: <MessageSquare size={20} />,
+        title: 'Message all students & staff',
+        desc: 'Campus announcements, reminders & alerts — sent in seconds',
+        accent: 'emerald',
+        prompt: 'Draft an announcement message for all students about upcoming exams in chat form',
+      },
+      {
+        id: 'a3',
+        icon: <Wallet size={20} />,
+        title: 'Pending fees & defaulters overview',
+        desc: 'See who hasn’t paid (₹4.85L dues) — and draft collection reminders',
+        accent: 'amber',
+        prompt: 'Give pending fees summary and reminder message in chat form',
+      },
+    ];
   };
 
-  // Inline formatting for **bold** and *italic*
-  const formatInlineStyles = (text: string) => {
-    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i} className="font-bold text-gray-900 dark:text-white">{part.slice(2, -2)}</strong>;
-      }
-      if (part.startsWith('*') && part.endsWith('*')) {
-        return <em key={i} className="italic text-gray-700 dark:text-gray-300">{part.slice(1, -1)}</em>;
-      }
-      return part;
-    });
+  const starterPrompts = getStarterPrompts();
+
+  // Role Scope Display Name
+  const getRoleScopeLabel = () => {
+    switch (role) {
+      case 'SUPER_ADMIN':
+      case 'ADMIN':
+        return 'Super Admin Scope • Full Institutional Access';
+      case 'ACCOUNTANT':
+        return 'Accountant Scope • Finance & Fee Access';
+      case 'TEACHER':
+        return 'Teacher Scope • Academic & Class Records';
+      case 'PARENT':
+        return 'Parent Portal • Ward Personal Access';
+      case 'STUDENT':
+        return 'Student Portal • Schedule & Homework';
+      default:
+        return 'General User Scope';
+    }
   };
 
   return (
@@ -310,6 +448,9 @@ export default function AIAssistantPage() {
             </span>
             <span className="text-gray-400">&gt;</span>
             <span className="text-gray-500 dark:text-gray-400 font-normal">Chat</span>
+            <span className="hidden sm:inline-flex text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/50 ml-2">
+              {role}
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -333,7 +474,11 @@ export default function AIAssistantPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           {/* Left: Recent Chats (Hidden on mobile, drawer view) */}
           <div className="hidden lg:block lg:col-span-1 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 p-4 shadow-sm min-h-[520px]">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Recent Chats</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Recent Chats</h3>
+              <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">{role}</span>
+            </div>
+
             {recentChats.length === 0 ? (
               <p className="text-xs text-gray-400 py-8 text-center">No conversations yet.</p>
             ) : (
@@ -364,7 +509,7 @@ export default function AIAssistantPage() {
           </div>
 
           {/* Center/Right: AI Chat Arena */}
-          <div className="lg:col-span-3 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col h-[650px] sm:h-[700px] overflow-hidden">
+          <div className="lg:col-span-3 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col h-[650px] sm:h-[720px] overflow-hidden">
             {/* Top Persona Bar */}
             <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between flex-shrink-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
               <div className="flex items-center gap-3">
@@ -372,23 +517,26 @@ export default function AIAssistantPage() {
                   <Sparkles size={20} />
                 </div>
                 <div>
-                  <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                  <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5 flex-wrap">
                     <span>Adam</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-300 font-semibold">
                       SRM ECO TECH
                     </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-medium">
+                      {userName} ({role})
+                    </span>
                   </h2>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Your AI school assistant</p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">{getRoleScopeLabel()}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
-                {/* Daily Token Badge (1,000 token limit requirement) */}
+                {/* Daily Token Badge (1,000,000 token limit requirement) */}
                 <span
                   title={`Daily limit: ${dailyLimit.toLocaleString()} tokens/day. Resets daily.`}
                   className={cn(
                     'px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors flex items-center gap-1 shadow-sm',
-                    tokensRemaining > 200
+                    tokensRemaining > 200000
                       ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
                       : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
                   )}
@@ -426,78 +574,51 @@ export default function AIAssistantPage() {
             {/* Conversation Timeline */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 touch-scroll">
               {messages.length === 0 ? (
-                /* Initial Prompt Suggestions View (Matches Reference Screenshot) */
+                /* Role-Based Starter Prompt Suggestions View */
                 <div className="max-w-2xl mx-auto py-4 sm:py-6 space-y-5">
-                  <p className="text-center text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                    Your school&apos;s AI assistant — ask anything, or try one of these:
-                  </p>
+                  <div className="text-center space-y-1">
+                    <p className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      Welcome, {userName}! ({role})
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Your school AI assistant is ready for your role. Ask anything or pick a sample question below:
+                    </p>
+                  </div>
 
                   <div className="space-y-3">
-                    {/* Prompt 1 */}
-                    <button
-                      type="button"
-                      onClick={() => sendMessage('Give school report with charts for students, attendance and fee overview')}
-                      className="w-full text-left p-4 rounded-2xl border border-gray-100 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-all flex items-center justify-between group shadow-sm"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-300 flex items-center justify-center flex-shrink-0">
-                          <PieChart size={20} />
+                    {starterPrompts.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => sendMessage(item.prompt)}
+                        className="w-full text-left p-4 rounded-2xl border border-gray-100 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-all flex items-center justify-between group shadow-sm"
+                      >
+                        <div className="flex items-center gap-3.5">
+                          <div
+                            className={cn(
+                              'w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0',
+                              item.accent === 'emerald'
+                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-300'
+                                : item.accent === 'amber'
+                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-300'
+                                : 'bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-300'
+                            )}
+                          >
+                            {item.icon}
+                          </div>
+                          <div>
+                            <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-purple-600 transition-colors">
+                              {item.title}
+                            </h4>
+                            <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">{item.desc}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-purple-600 transition-colors">
-                            School report with charts
-                          </h4>
-                          <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
-                            Students, fees, attendance &amp; more — beautifully visualized
-                          </p>
-                        </div>
-                      </div>
-                      <ArrowRight size={16} className="text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all flex-shrink-0" />
-                    </button>
-
-                    {/* Prompt 2 */}
-                    <button
-                      type="button"
-                      onClick={() => sendMessage('Draft an announcement message for all students about upcoming exams in chat form')}
-                      className="w-full text-left p-4 rounded-2xl border border-gray-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-between group shadow-sm"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-300 flex items-center justify-center flex-shrink-0">
-                          <MessageSquare size={20} />
-                        </div>
-                        <div>
-                          <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 transition-colors">
-                            Message all students (in chat form)
-                          </h4>
-                          <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
-                            Announcements, reminders &amp; alerts — sent in seconds
-                          </p>
-                        </div>
-                      </div>
-                      <ArrowRight size={16} className="text-gray-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all flex-shrink-0" />
-                    </button>
-
-                    {/* Prompt 3 */}
-                    <button
-                      type="button"
-                      onClick={() => sendMessage('Give pending fees summary and reminder message in chat form')}
-                      className="w-full text-left p-4 rounded-2xl border border-gray-100 dark:border-slate-800 hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 transition-all flex items-center justify-between group shadow-sm"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-300 flex items-center justify-center flex-shrink-0">
-                          <Wallet size={20} />
-                        </div>
-                        <div>
-                          <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-amber-600 transition-colors">
-                            Pending fees (in chat form)
-                          </h4>
-                          <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
-                            See who hasn&apos;t paid — and send them a reminder
-                          </p>
-                        </div>
-                      </div>
-                      <ArrowRight size={16} className="text-gray-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all flex-shrink-0" />
-                    </button>
+                        <ArrowRight
+                          size={16}
+                          className="text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all flex-shrink-0"
+                        />
+                      </button>
+                    ))}
                   </div>
 
                   {/* Operational Scope Notice */}
@@ -506,13 +627,14 @@ export default function AIAssistantPage() {
                       <Mic size={13} />
                       <span>Tip: enable Voice Wake above and just say &quot;Adam&quot;</span>
                     </span>
-                    <p className="text-[11px] text-gray-400">
-                      🔒 Strictly bounded to Vidyalaya school data &amp; greetings • 1,000,000 tokens/day quota
-                    </p>
+                    <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400">
+                      <ShieldCheck size={13} className="text-emerald-500" />
+                      <span>Role-Based Access Control Active: {getRoleScopeLabel()}</span>
+                    </div>
                   </div>
                 </div>
               ) : (
-                /* Chat Messages History */
+                /* Chat Messages History with Robust MarkdownRenderer */
                 messages.map((msg) => (
                   <div
                     key={msg.id}
@@ -542,28 +664,44 @@ export default function AIAssistantPage() {
                     >
                       {/* Assistant Top bar with copy action */}
                       {msg.sender === 'assistant' && (
-                        <div className="flex items-center justify-between pb-1 border-b border-gray-200/60 dark:border-slate-700/60 text-[11px] text-gray-400">
-                          <span className="font-semibold text-purple-600 dark:text-purple-400">Adam (Vidyalaya AI)</span>
+                        <div className="flex items-center justify-between pb-1.5 border-b border-gray-200/60 dark:border-slate-700/60 text-[11px] text-gray-400">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-purple-600 dark:text-purple-400">
+                              Adam (Vidyalaya AI)
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 font-medium">
+                              {role}
+                            </span>
+                          </div>
                           <button
                             type="button"
                             onClick={() => handleCopyText(msg.id, msg.text)}
                             className="flex items-center gap-1 hover:text-purple-600 dark:hover:text-purple-300 transition-colors"
                             title="Copy response"
                           >
-                            {copiedId === msg.id ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                            {copiedId === msg.id ? (
+                              <Check size={12} className="text-emerald-500" />
+                            ) : (
+                              <Copy size={12} />
+                            )}
                             <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
                           </button>
                         </div>
                       )}
 
-                      {/* Message Content */}
+                      {/* Message Content rendered via industrial MarkdownRenderer */}
                       {msg.sender === 'user' ? (
                         <p className="whitespace-pre-line">{msg.text}</p>
                       ) : (
-                        renderFormattedText(msg.text)
+                        <MarkdownRenderer content={msg.text} />
                       )}
 
-                      <span className={cn('text-[9px] block text-right mt-1', msg.sender === 'user' ? 'text-purple-200' : 'text-gray-400')}>
+                      <span
+                        className={cn(
+                          'text-[9px] block text-right mt-1',
+                          msg.sender === 'user' ? 'text-purple-200' : 'text-gray-400'
+                        )}
+                      >
                         {msg.time}
                       </span>
                     </div>
@@ -583,7 +721,7 @@ export default function AIAssistantPage() {
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce [animation-delay:0.2s]" />
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce [animation-delay:0.4s]" />
                     </div>
-                    <span>Adam is consulting school records...</span>
+                    <span>Adam is consulting authorized records for {role}...</span>
                   </div>
                 </div>
               )}
@@ -598,7 +736,7 @@ export default function AIAssistantPage() {
                 <div className="mb-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
                   <AlertCircle size={16} className="text-amber-600 flex-shrink-0" />
                   <span>
-                    You have reached your 1,000 tokens daily allowance. The quota resets tomorrow at midnight.
+                    You have reached your 1,000,000 tokens daily allowance. The quota resets tomorrow at midnight.
                   </span>
                 </div>
               )}
@@ -618,8 +756,16 @@ export default function AIAssistantPage() {
                     onChange={(e) => setInputValue(e.target.value)}
                     placeholder={
                       tokensRemaining <= 0
-                        ? 'Daily quota exhausted (1,000 tokens/day)'
-                        : 'Ask Adam anything about school operations, fees, attendance...'
+                        ? 'Daily quota exhausted (1,000,000 tokens/day)'
+                        : `Ask Adam (${role} scope: ${
+                            role === 'PARENT'
+                              ? "child's fees, attendance, bus..."
+                              : role === 'TEACHER'
+                              ? 'class attendance, homework, exams...'
+                              : role === 'STUDENT'
+                              ? 'timetable, homework, holidays...'
+                              : 'school overview, fees, announcements...'
+                          })`
                     }
                     className="w-full pl-4 pr-10 py-2.5 sm:py-3 bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-2xl text-xs sm:text-sm text-gray-900 dark:text-gray-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-all placeholder:text-gray-400 disabled:opacity-50"
                   />
