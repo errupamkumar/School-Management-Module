@@ -3,6 +3,83 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 
+const DEMO_ACCOUNTS: Record<
+  string,
+  {
+    passwords: string[];
+    role: string;
+    name: string;
+    id: string;
+    campusId: string;
+    campusName: string;
+  }
+> = {
+  'admin@vidyalaya.com': {
+    passwords: ['admin123', 'Admin@123'],
+    role: 'SUPER_ADMIN',
+    name: 'Dr. Anand Swaroop Pathak',
+    id: 'demo-admin-id',
+    campusId: 'demo-campus-01',
+    campusName: 'Vidyalaya Senior Secondary Campus',
+  },
+  'admin@school.com': {
+    passwords: ['Admin@123', 'admin123'],
+    role: 'SUPER_ADMIN',
+    name: 'Administrator',
+    id: 'demo-admin-id-2',
+    campusId: 'demo-campus-01',
+    campusName: 'Vidyalaya Main Campus',
+  },
+  'teacher@vidyalaya.com': {
+    passwords: ['teacher123', 'Teacher@123'],
+    role: 'TEACHER',
+    name: 'Rajesh Khanna',
+    id: 'demo-teacher-id',
+    campusId: 'demo-campus-01',
+    campusName: 'Vidyalaya Senior Secondary Campus',
+  },
+  'teacher@school.com': {
+    passwords: ['Teacher@123', 'teacher123'],
+    role: 'TEACHER',
+    name: 'Sunita Sharma',
+    id: 'demo-teacher-id-2',
+    campusId: 'demo-campus-01',
+    campusName: 'Vidyalaya Main Campus',
+  },
+  'parent@vidyalaya.com': {
+    passwords: ['parent123', 'Parent@123'],
+    role: 'PARENT',
+    name: 'Rajesh Mishra',
+    id: 'demo-parent-id',
+    campusId: 'demo-campus-01',
+    campusName: 'Vidyalaya Senior Secondary Campus',
+  },
+  'parent@school.com': {
+    passwords: ['Parent@123', 'parent123'],
+    role: 'PARENT',
+    name: 'Pooja Verma (Guardian)',
+    id: 'demo-parent-id-2',
+    campusId: 'demo-campus-01',
+    campusName: 'Vidyalaya Main Campus',
+  },
+  'student@vidyalaya.com': {
+    passwords: ['student123', 'Student@123'],
+    role: 'STUDENT',
+    name: 'Aarav Sharma',
+    id: 'demo-student-id',
+    campusId: 'demo-campus-01',
+    campusName: 'Vidyalaya Senior Secondary Campus',
+  },
+  'student@school.com': {
+    passwords: ['Student@123', 'student123'],
+    role: 'STUDENT',
+    name: 'Diya Dubey',
+    id: 'demo-student-id-2',
+    campusId: 'demo-campus-01',
+    campusName: 'Vidyalaya Main Campus',
+  },
+};
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -14,26 +91,55 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-          include: { campus: true, student: true, teacher: true, parent: true },
-        });
+        const email = credentials.email.trim().toLowerCase();
+        const password = credentials.password;
 
-        if (!user || !user.isActive) return null;
+        // 1. Check database first if available
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email },
+            include: { campus: true, student: true, teacher: true, parent: true },
+          });
 
-        const isValid = await bcrypt.compare(credentials.password, user.password);
-        if (!isValid) return null;
+          if (user && user.isActive) {
+            const isValid = await bcrypt.compare(password, user.password);
+            if (isValid) {
+              return {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                name:
+                  user.student?.firstName ||
+                  user.teacher?.firstName ||
+                  user.parent?.fatherName ||
+                  user.email,
+                campusId: user.campusId,
+                campusName: user.campus?.name,
+                language: user.language,
+                avatar: user.avatar,
+              };
+            }
+          }
+        } catch (dbErr) {
+          console.warn('Database lookup failed, falling back to demo accounts:', dbErr);
+        }
 
-        return {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          name: user.student?.firstName || user.teacher?.firstName || user.parent?.fatherName || user.email,
-          campusId: user.campusId,
-          campusName: user.campus?.name,
-          language: user.language,
-          avatar: user.avatar,
-        };
+        // 2. Check Demo Accounts fallback (enables instant login on cloud preview/deployments)
+        const demoUser = DEMO_ACCOUNTS[email];
+        if (demoUser && demoUser.passwords.includes(password)) {
+          return {
+            id: demoUser.id,
+            email: email,
+            role: demoUser.role,
+            name: demoUser.name,
+            campusId: demoUser.campusId,
+            campusName: demoUser.campusName,
+            language: 'en',
+            avatar: null,
+          };
+        }
+
+        return null;
       },
     }),
   ],

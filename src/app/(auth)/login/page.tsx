@@ -11,11 +11,17 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
+  const fillDemo = (demoEmail: string, demoPass: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPass);
+    toast.success('Credentials filled! Click Sign In.');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const result = await signIn('credentials', { email, password, redirect: false });
+      const result = await signIn('credentials', { email: email.trim(), password, redirect: false });
       if (result?.error) {
         toast.error('Invalid email or password');
       } else {
@@ -24,7 +30,7 @@ export default function LoginPage() {
         router.refresh();
       }
     } catch {
-      toast.error('Something went wrong');
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -74,7 +80,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="form-label">Email Address</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="form-input" placeholder="admin@school.com" required />
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="form-input" placeholder="admin@vidyalaya.com" required />
               </div>
 
               <div>
@@ -102,12 +108,44 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-6 p-4 bg-blue-50 rounded-xl">
-              <p className="text-xs font-medium text-blue-800 mb-2">Demo Credentials:</p>
-              <div className="space-y-1 text-xs text-blue-700">
-                <p><strong>Admin:</strong> admin@vidyalaya.com / admin123</p>
-                <p><strong>Teacher:</strong> teacher@vidyalaya.com / teacher123</p>
-                <p><strong>Parent:</strong> parent@vidyalaya.com / parent123</p>
+            <div className="mt-6 p-4 bg-blue-50/70 border border-blue-100 rounded-xl">
+              <div className="flex items-center justify-between mb-2.5">
+                <p className="text-xs font-semibold text-blue-900">Demo Logins (Click to auto-fill):</p>
+                <span className="text-[10px] bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded font-medium">1-Click</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => fillDemo('admin@vidyalaya.com', 'admin123')}
+                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-400 hover:bg-blue-50/60 transition-all text-xs shadow-sm"
+                >
+                  <div className="font-semibold text-gray-800">👑 Admin</div>
+                  <div className="text-[11px] text-gray-500 truncate">admin@vidyalaya.com</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillDemo('teacher@vidyalaya.com', 'teacher123')}
+                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-400 hover:bg-blue-50/60 transition-all text-xs shadow-sm"
+                >
+                  <div className="font-semibold text-gray-800">👨‍🏫 Teacher</div>
+                  <div className="text-[11px] text-gray-500 truncate">teacher@vidyalaya.com</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillDemo('parent@vidyalaya.com', 'parent123')}
+                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-400 hover:bg-blue-50/60 transition-all text-xs shadow-sm"
+                >
+                  <div className="font-semibold text-gray-800">👨‍👩‍👦 Parent</div>
+                  <div className="text-[11px] text-gray-500 truncate">parent@vidyalaya.com</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillDemo('student@school.com', 'Student@123')}
+                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-400 hover:bg-blue-50/60 transition-all text-xs shadow-sm"
+                >
+                  <div className="font-semibold text-gray-800">🎓 Student</div>
+                  <div className="text-[11px] text-gray-500 truncate">student@school.com</div>
+                </button>
               </div>
             </div>
           </div>
