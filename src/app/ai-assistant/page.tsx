@@ -12,17 +12,14 @@ import {
   MessageSquare,
   Wallet,
   ArrowRight,
-  Bot,
   User,
-  CheckCircle2,
-  TrendingUp,
   Copy,
   Check,
-  RotateCcw,
-  Volume2,
-  VolumeX,
+  AlertCircle,
+  HelpCircle,
+  ShieldAlert,
 } from 'lucide-react';
-import { cn, formatCurrency } from '@/utils/helpers';
+import { cn } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
 interface ChatMessage {
@@ -30,10 +27,6 @@ interface ChatMessage {
   sender: 'user' | 'assistant';
   text: string;
   time: string;
-  richContent?: {
-    type: 'report' | 'message_broadcast' | 'fee_dues' | 'general';
-    data?: any;
-  };
 }
 
 interface RecentChat {
@@ -51,6 +44,12 @@ export default function AIAssistantPage() {
   const [isListening, setIsListening] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeChatId, setActiveChatId] = useState<string>('new');
+
+  // Daily token tracking: 1,000 tokens per day limit
+  const [tokensRemaining, setTokensRemaining] = useState<number>(1000);
+  const [tokensUsedToday, setTokensUsedToday] = useState<number>(0);
+  const [dailyLimit, setDailyLimit] = useState<number>(1000);
+
   const [recentChats, setRecentChats] = useState<RecentChat[]>([
     {
       id: 'chat-1',
@@ -60,13 +59,27 @@ export default function AIAssistantPage() {
     },
     {
       id: 'chat-2',
-      title: 'Half-Yearly Exam Datesheet',
-      date: 'Yesterday',
-      preview: 'Generated schedule for Classes 6-10...',
+      title: 'Pending Fee Reminder in Chat Form',
+      date: 'Today',
+      preview: 'Generated WhatsApp chat message draft...',
     },
   ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch initial token quota on load
+  useEffect(() => {
+    fetch('/api/ai-assistant')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setTokensRemaining(data.remainingToday);
+          setTokensUsedToday(data.usedToday);
+          if (data.dailyLimit) setDailyLimit(data.dailyLimit);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -85,7 +98,8 @@ export default function AIAssistantPage() {
     }
 
     try {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
@@ -132,9 +146,14 @@ export default function AIAssistantPage() {
     toast.success('Started a fresh conversation with Adam');
   };
 
-  const sendMessage = (promptText?: string) => {
+  const sendMessage = async (promptText?: string) => {
     const query = (promptText || inputValue).trim();
     if (!query) return;
+
+    if (tokensRemaining <= 0) {
+      toast.error('Daily limit of 1,000 tokens reached for today. Resets at midnight.');
+      return;
+    }
 
     const userMsg: ChatMessage = {
       id: `usr-${Date.now()}`,
@@ -147,90 +166,136 @@ export default function AIAssistantPage() {
     setInputValue('');
     setIsThinking(true);
 
-    // AI Response generation logic
-    setTimeout(() => {
-      let assistantMsg: ChatMessage;
-      const lower = query.toLowerCase();
+    try {
+      const res = await fetch('/api/ai-assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: query,
+          history: messages.slice(-4).map((m) => ({ sender: m.sender, text: m.text })),
+        }),
+      });
 
-      if (lower.includes('report') || lower.includes('chart') || lower.includes('statistic')) {
-        assistantMsg = {
+      const data = await res.json();
+
+      if (data.success) {
+        if (typeof data.tokensRemaining === 'number') {
+          setTokensRemaining(data.tokensRemaining);
+        }
+        if (typeof data.totalTokensToday === 'number') {
+          setTokensUsedToday(data.totalTokensToday);
+        }
+
+        const assistantMsg: ChatMessage = {
           id: `ai-${Date.now()}`,
           sender: 'assistant',
-          text: 'Here is the executive school summary report with key institutional metrics:',
+          text: data.answer,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          richContent: {
-            type: 'report',
-            data: {
-              totalStudents: 1100,
-              boys: 620,
-              girls: 480,
-              totalStaff: 68,
-              attendanceRate: 93.1,
-              monthlyIncome: 325000,
-              pendingDues: 485000,
-              feeRate: 82,
-            },
-          },
         };
-      } else if (lower.includes('message') || lower.includes('sms') || lower.includes('announce') || lower.includes('broadcast')) {
-        assistantMsg = {
-          id: `ai-${Date.now()}`,
-          sender: 'assistant',
-          text: 'I have drafted an announcement notice ready to broadcast to all students and parents:',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          richContent: {
-            type: 'message_broadcast',
-            data: {
-              subject: 'Upcoming Half-Yearly Examinations 2026',
-              body: 'Dear Students and Parents, this is to notify you that the Half-Yearly examinations commence from October 15, 2026. Detailed datesheets and admit cards have been published on the student portal. Please ensure all outstanding term dues are cleared before examination commencement. Best wishes from Vidyalaya Management.',
-            },
+
+        setMessages((prev) => [...prev, assistantMsg]);
+
+        // Save to recent chat history
+        setRecentChats((prev) => [
+          {
+            id: `chat-${Date.now()}`,
+            title: query.length > 28 ? query.slice(0, 28) + '...' : query,
+            date: 'Just now',
+            preview: data.answer.slice(0, 50).replace(/[#*`]/g, '') + '...',
           },
-        };
-      } else if (lower.includes('fee') || lower.includes('dues') || lower.includes('pending') || lower.includes('paid')) {
-        assistantMsg = {
-          id: `ai-${Date.now()}`,
-          sender: 'assistant',
-          text: 'Here is the real-time fee defaulters summary for current academic term:',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          richContent: {
-            type: 'fee_dues',
-            data: {
-              totalDefaulters: 14,
-              totalDues: 485000,
-              classes: [
-                { name: 'Class 10-A', count: 6, amount: 148000 },
-                { name: 'Class 9-B', count: 5, amount: 125000 },
-                { name: 'Class 8-A', count: 3, amount: 62000 },
-              ],
-            },
-          },
-        };
+          ...prev.slice(0, 4),
+        ]);
       } else {
-        assistantMsg = {
+        if (data.error === 'DAILY_LIMIT_EXCEEDED') {
+          setTokensRemaining(0);
+          toast.error('Daily limit of 1,000 tokens reached. Resets at midnight.');
+        } else {
+          toast.error(data.message || 'Unable to connect to Adam.');
+        }
+
+        const errMsg: ChatMessage = {
           id: `ai-${Date.now()}`,
           sender: 'assistant',
-          text: `I've processed your query: "${query}".\n\nAs your school management AI, I can help you query student admission rosters, track pending fee dues, generate attendance reports, draft WhatsApp/SMS alerts for parents, and plan examination timetables. Feel free to click any suggestion or ask a specific question.`,
+          text: data.message || 'Unable to process your query. Please try again.',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          richContent: {
-            type: 'general',
-          },
         };
+        setMessages((prev) => [...prev, errMsg]);
       }
-
-      setMessages((prev) => [...prev, assistantMsg]);
+    } catch (e) {
+      toast.error('Network error communicating with AI Assistant.');
+    } finally {
       setIsThinking(false);
+    }
+  };
 
-      // Save to recent chat history
-      setRecentChats((prev) => [
-        {
-          id: `chat-${Date.now()}`,
-          title: query.length > 25 ? query.slice(0, 25) + '...' : query,
-          date: 'Just now',
-          preview: assistantMsg.text.slice(0, 45) + '...',
-        },
-        ...prev.slice(0, 4),
-      ]);
-    }, 900);
+  // Helper to format assistant markdown text cleanly
+  const renderFormattedText = (rawText: string) => {
+    // Split into paragraphs / lines
+    const lines = rawText.split('\n');
+
+    return (
+      <div className="space-y-2 text-xs sm:text-sm leading-relaxed">
+        {lines.map((line, idx) => {
+          const trimmed = line.trim();
+          if (!trimmed) {
+            return <div key={idx} className="h-1" />;
+          }
+
+          // Headers
+          if (trimmed.startsWith('### ')) {
+            return (
+              <h5 key={idx} className="font-bold text-sm sm:text-base text-purple-700 dark:text-purple-300 pt-1">
+                {trimmed.replace('### ', '')}
+              </h5>
+            );
+          }
+          if (trimmed.startsWith('## ')) {
+            return (
+              <h4 key={idx} className="font-extrabold text-sm sm:text-base text-gray-900 dark:text-gray-100 pt-1">
+                {trimmed.replace('## ', '')}
+              </h4>
+            );
+          }
+
+          // Bullet points
+          if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+            const content = trimmed.substring(2);
+            return (
+              <div key={idx} className="flex items-start gap-2 pl-2">
+                <span className="text-purple-500 font-bold mt-1 text-xs">•</span>
+                <span className="flex-1">{formatInlineStyles(content)}</span>
+              </div>
+            );
+          }
+
+          // Horizontal rule
+          if (trimmed === '***' || trimmed === '---') {
+            return <hr key={idx} className="my-2 border-gray-200 dark:border-slate-700" />;
+          }
+
+          // Default paragraph
+          return (
+            <p key={idx} className="text-gray-800 dark:text-gray-200">
+              {formatInlineStyles(line)}
+            </p>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Inline formatting for **bold** and *italic*
+  const formatInlineStyles = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-bold text-gray-900 dark:text-white">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('*') && part.endsWith('*')) {
+        return <em key={i} className="italic text-gray-700 dark:text-gray-300">{part.slice(1, -1)}</em>;
+      }
+      return part;
+    });
   };
 
   return (
@@ -248,14 +313,15 @@ export default function AIAssistantPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Online</span>
-            </div>
+            </span>
 
             <button
+              type="button"
               onClick={handleNewChat}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm transition-all transform active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow-sm transition-colors"
             >
               <Plus size={14} />
               <span>New Chat</span>
@@ -263,63 +329,77 @@ export default function AIAssistantPage() {
           </div>
         </div>
 
-        {/* Main Grid: Left Recent Chats + Right Chat Interface */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Left Column: Recent Chats */}
-          <div className="lg:col-span-3 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm p-4 flex flex-col h-[75vh] min-h-[480px]">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3 px-1">
-              Recent Chats
-            </h3>
-
-            <div className="flex-1 overflow-y-auto space-y-2 touch-scroll pr-1">
-              {recentChats.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-8">No conversations yet.</p>
-              ) : (
-                recentChats.map((chat) => (
+        {/* Main AI Workspace Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+          {/* Left: Recent Chats (Hidden on mobile, drawer view) */}
+          <div className="hidden lg:block lg:col-span-1 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 p-4 shadow-sm min-h-[520px]">
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Recent Chats</h3>
+            {recentChats.length === 0 ? (
+              <p className="text-xs text-gray-400 py-8 text-center">No conversations yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {recentChats.map((chat) => (
                   <button
                     key={chat.id}
                     onClick={() => {
                       setActiveChatId(chat.id);
-                      toast(`Loaded: ${chat.title}`);
+                      toast(`Opened conversation: ${chat.title}`);
                     }}
                     className={cn(
-                      'w-full text-left p-2.5 rounded-xl border text-xs transition-all',
+                      'w-full text-left p-3 rounded-2xl border transition-all text-xs',
                       activeChatId === chat.id
-                        ? 'border-purple-300 dark:border-purple-700 bg-purple-50/60 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200'
-                        : 'border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300'
+                        ? 'border-purple-300 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30'
+                        : 'border-transparent hover:bg-gray-50 dark:hover:bg-slate-800/60'
                     )}
                   >
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <span className="font-bold truncate">{chat.title}</span>
-                      <span className="text-[10px] text-gray-400">{chat.date}</span>
+                    <div className="flex items-center justify-between text-gray-700 dark:text-gray-300 font-semibold mb-1">
+                      <span className="truncate">{chat.title}</span>
+                      <span className="text-[10px] text-gray-400 font-normal">{chat.date}</span>
                     </div>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{chat.preview}</p>
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 line-clamp-1">{chat.preview}</p>
                   </button>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Right Column: Assistant Window */}
-          <div className="lg:col-span-9 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col h-[75vh] min-h-[480px] overflow-hidden">
-            {/* Assistant Header Card */}
-            <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-gray-50/40 dark:bg-slate-900/40 flex-shrink-0">
+          {/* Center/Right: AI Chat Arena */}
+          <div className="lg:col-span-3 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col h-[650px] sm:h-[700px] overflow-hidden">
+            {/* Top Persona Bar */}
+            <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between flex-shrink-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-bold shadow-md shadow-purple-600/20">
-                  <Sparkles size={22} />
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-600/20 flex-shrink-0">
+                  <Sparkles size={20} />
                 </div>
                 <div>
-                  <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100">Adam</h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Your AI school assistant</p>
+                  <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                    <span>Adam</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-300 font-semibold">
+                      SRM ECO TECH
+                    </span>
+                  </h2>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Your AI school assistant</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                  ⚡ Free plan &bull; 100k tokens left
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
+                {/* Daily Token Badge (1,000 token limit requirement) */}
+                <span
+                  title={`Daily limit: ${dailyLimit.toLocaleString()} tokens/day. Resets daily.`}
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors flex items-center gap-1 shadow-sm',
+                    tokensRemaining > 200
+                      ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                      : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                  )}
+                >
+                  <span>⚡ Daily Plan •</span>
+                  <span className="font-bold">{tokensRemaining.toLocaleString()}</span>
+                  <span className="text-gray-400">/ {dailyLimit.toLocaleString()} tokens left</span>
                 </span>
 
-                <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                {/* Voice Wake Switch */}
+                <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-300">
                   <span>Voice Wake</span>
                   <button
                     type="button"
@@ -356,7 +436,7 @@ export default function AIAssistantPage() {
                     {/* Prompt 1 */}
                     <button
                       type="button"
-                      onClick={() => sendMessage('School report with charts')}
+                      onClick={() => sendMessage('Give school report with charts for students, attendance and fee overview')}
                       className="w-full text-left p-4 rounded-2xl border border-gray-100 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-all flex items-center justify-between group shadow-sm"
                     >
                       <div className="flex items-center gap-3.5">
@@ -378,7 +458,7 @@ export default function AIAssistantPage() {
                     {/* Prompt 2 */}
                     <button
                       type="button"
-                      onClick={() => sendMessage('Message all students')}
+                      onClick={() => sendMessage('Draft an announcement message for all students about upcoming exams in chat form')}
                       className="w-full text-left p-4 rounded-2xl border border-gray-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-between group shadow-sm"
                     >
                       <div className="flex items-center gap-3.5">
@@ -387,7 +467,7 @@ export default function AIAssistantPage() {
                         </div>
                         <div>
                           <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 transition-colors">
-                            Message all students
+                            Message all students (in chat form)
                           </h4>
                           <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
                             Announcements, reminders &amp; alerts — sent in seconds
@@ -400,7 +480,7 @@ export default function AIAssistantPage() {
                     {/* Prompt 3 */}
                     <button
                       type="button"
-                      onClick={() => sendMessage('Pending fees summary and reminders')}
+                      onClick={() => sendMessage('Give pending fees summary and reminder message in chat form')}
                       className="w-full text-left p-4 rounded-2xl border border-gray-100 dark:border-slate-800 hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 transition-all flex items-center justify-between group shadow-sm"
                     >
                       <div className="flex items-center gap-3.5">
@@ -409,7 +489,7 @@ export default function AIAssistantPage() {
                         </div>
                         <div>
                           <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-amber-600 transition-colors">
-                            Pending fees
+                            Pending fees (in chat form)
                           </h4>
                           <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
                             See who hasn&apos;t paid — and send them a reminder
@@ -420,12 +500,15 @@ export default function AIAssistantPage() {
                     </button>
                   </div>
 
-                  {/* Tip */}
-                  <div className="pt-2 text-center">
+                  {/* Operational Scope Notice */}
+                  <div className="pt-2 text-center space-y-2">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-medium border border-purple-100 dark:border-purple-900">
                       <Mic size={13} />
                       <span>Tip: enable Voice Wake above and just say &quot;Adam&quot;</span>
                     </span>
+                    <p className="text-[11px] text-gray-400">
+                      🔒 Strictly bounded to Vidyalaya school data &amp; greetings • 1,000 tokens/day quota
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -440,7 +523,7 @@ export default function AIAssistantPage() {
                   >
                     <div
                       className={cn(
-                        'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold',
+                        'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm',
                         msg.sender === 'user'
                           ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white'
                           : 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
@@ -451,96 +534,38 @@ export default function AIAssistantPage() {
 
                     <div
                       className={cn(
-                        'rounded-2xl p-4 text-xs sm:text-sm leading-relaxed shadow-sm',
+                        'rounded-2xl p-4 text-xs sm:text-sm leading-relaxed shadow-sm relative group',
                         msg.sender === 'user'
                           ? 'bg-purple-600 text-white rounded-tr-none'
-                          : 'bg-gray-50 dark:bg-slate-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-slate-700 rounded-tl-none space-y-3'
+                          : 'bg-gray-50 dark:bg-slate-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-slate-700 rounded-tl-none space-y-2.5'
                       )}
                     >
-                      <p className="whitespace-pre-line">{msg.text}</p>
-
-                      {/* Rich Content: School Report Card */}
-                      {msg.richContent?.type === 'report' && msg.richContent.data && (
-                        <div className="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-purple-100 dark:border-slate-700 space-y-3 mt-2">
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200">
-                              <p className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase">Students</p>
-                              <p className="text-base font-extrabold">{msg.richContent.data.totalStudents}</p>
-                              <p className="text-[10px] text-gray-500">{msg.richContent.data.boys}B / {msg.richContent.data.girls}G</p>
-                            </div>
-                            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200">
-                              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase">Attendance</p>
-                              <p className="text-base font-extrabold">{msg.richContent.data.attendanceRate}%</p>
-                              <p className="text-[10px] text-emerald-600">Optimal rate</p>
-                            </div>
-                            <div className="p-2.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200">
-                              <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase">Income</p>
-                              <p className="text-base font-extrabold">{formatCurrency(msg.richContent.data.monthlyIncome)}</p>
-                              <p className="text-[10px] text-purple-600">82% target</p>
-                            </div>
-                            <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200">
-                              <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold uppercase">Pending</p>
-                              <p className="text-base font-extrabold">{formatCurrency(msg.richContent.data.pendingDues)}</p>
-                              <p className="text-[10px] text-rose-600">Action needed</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Rich Content: Broadcast Message Preview */}
-                      {msg.richContent?.type === 'message_broadcast' && msg.richContent.data && (
-                        <div className="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-emerald-100 dark:border-slate-700 space-y-2 mt-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
-                              Broadcast Notice Draft
-                            </span>
-                            <button
-                              onClick={() => handleCopyText(msg.id, msg.richContent?.data?.body)}
-                              className="text-[11px] text-purple-600 font-semibold flex items-center gap-1 hover:underline"
-                            >
-                              {copiedId === msg.id ? <Check size={12} /> : <Copy size={12} />}
-                              <span>{copiedId === msg.id ? 'Copied' : 'Copy Text'}</span>
-                            </button>
-                          </div>
-                          <div className="p-2.5 rounded-lg bg-emerald-50/50 dark:bg-slate-800 text-xs italic text-gray-700 dark:text-gray-300">
-                            &quot;{msg.richContent.data.body}&quot;
-                          </div>
-                          <div className="flex gap-2 pt-1">
-                            <button
-                              onClick={() => toast.success('SMS broadcast sent to 1,100 parent contacts!')}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors"
-                            >
-                              ✓ Send to All Parents via SMS
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Rich Content: Fee Dues Breakdown */}
-                      {msg.richContent?.type === 'fee_dues' && msg.richContent.data && (
-                        <div className="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-amber-100 dark:border-slate-700 space-y-2 mt-2">
-                          <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
-                            High Priority Fee Dues ({msg.richContent.data.totalDefaulters} defaulters):
-                          </p>
-                          <div className="space-y-1.5 text-xs">
-                            {msg.richContent.data.classes.map((c: any) => (
-                              <div key={c.name} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-slate-800">
-                                <span className="font-semibold">{c.name}</span>
-                                <span className="text-gray-500">{c.count} students</span>
-                                <span className="font-bold text-rose-600">{formatCurrency(c.amount)}</span>
-                              </div>
-                            ))}
-                          </div>
+                      {/* Assistant Top bar with copy action */}
+                      {msg.sender === 'assistant' && (
+                        <div className="flex items-center justify-between pb-1 border-b border-gray-200/60 dark:border-slate-700/60 text-[11px] text-gray-400">
+                          <span className="font-semibold text-purple-600 dark:text-purple-400">Adam (Vidyalaya AI)</span>
                           <button
-                            onClick={() => toast.success('Fee reminder notifications dispatched to 14 guardians!')}
-                            className="w-full mt-2 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg transition-colors"
+                            type="button"
+                            onClick={() => handleCopyText(msg.id, msg.text)}
+                            className="flex items-center gap-1 hover:text-purple-600 dark:hover:text-purple-300 transition-colors"
+                            title="Copy response"
                           >
-                            Dispatch WhatsApp Fee Reminders
+                            {copiedId === msg.id ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                            <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
                           </button>
                         </div>
                       )}
 
-                      <span className="text-[9px] opacity-60 block text-right mt-1">{msg.time}</span>
+                      {/* Message Content */}
+                      {msg.sender === 'user' ? (
+                        <p className="whitespace-pre-line">{msg.text}</p>
+                      ) : (
+                        renderFormattedText(msg.text)
+                      )}
+
+                      <span className={cn('text-[9px] block text-right mt-1', msg.sender === 'user' ? 'text-purple-200' : 'text-gray-400')}>
+                        {msg.time}
+                      </span>
                     </div>
                   </div>
                 ))
@@ -552,13 +577,13 @@ export default function AIAssistantPage() {
                   <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center justify-center flex-shrink-0 text-xs font-bold animate-pulse">
                     <Sparkles size={15} />
                   </div>
-                  <div className="rounded-2xl p-3.5 bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-tl-none flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400">
+                  <div className="rounded-2xl p-3.5 bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-tl-none flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 shadow-sm">
                     <div className="flex gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce" />
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce [animation-delay:0.2s]" />
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce [animation-delay:0.4s]" />
                     </div>
-                    <span>Adam is thinking...</span>
+                    <span>Adam is consulting school records...</span>
                   </div>
                 </div>
               )}
@@ -568,6 +593,16 @@ export default function AIAssistantPage() {
 
             {/* Input Bar at Bottom */}
             <div className="p-3 sm:p-4 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex-shrink-0">
+              {/* Daily Limit Warning Banner */}
+              {tokensRemaining <= 0 && (
+                <div className="mb-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
+                  <AlertCircle size={16} className="text-amber-600 flex-shrink-0" />
+                  <span>
+                    You have reached your 1,000 tokens daily allowance. The quota resets tomorrow at midnight.
+                  </span>
+                </div>
+              )}
+
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -579,16 +614,22 @@ export default function AIAssistantPage() {
                   <input
                     type="text"
                     value={inputValue}
+                    disabled={tokensRemaining <= 0}
                     onChange={(e) => setInputValue(e.target.value)}
-                    placeholder="Ask Adam anything..."
-                    className="w-full pl-4 pr-10 py-2.5 sm:py-3 bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-2xl text-xs sm:text-sm text-gray-900 dark:text-gray-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-all placeholder:text-gray-400"
+                    placeholder={
+                      tokensRemaining <= 0
+                        ? 'Daily quota exhausted (1,000 tokens/day)'
+                        : 'Ask Adam anything about school operations, fees, attendance...'
+                    }
+                    className="w-full pl-4 pr-10 py-2.5 sm:py-3 bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-2xl text-xs sm:text-sm text-gray-900 dark:text-gray-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-all placeholder:text-gray-400 disabled:opacity-50"
                   />
                   <button
                     type="button"
                     onClick={toggleListening}
+                    disabled={tokensRemaining <= 0}
                     aria-label={isListening ? 'Stop listening' : 'Start voice input'}
                     className={cn(
-                      'absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors',
+                      'absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors disabled:opacity-30',
                       isListening
                         ? 'text-rose-600 bg-rose-50 dark:bg-rose-950 animate-pulse'
                         : 'text-gray-400 hover:text-purple-600'
@@ -600,7 +641,7 @@ export default function AIAssistantPage() {
 
                 <button
                   type="submit"
-                  disabled={!inputValue.trim()}
+                  disabled={!inputValue.trim() || isThinking || tokensRemaining <= 0}
                   className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-md shadow-purple-600/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 transform active:scale-95"
                 >
                   <Send size={16} />
