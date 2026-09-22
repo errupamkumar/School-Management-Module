@@ -6,8 +6,8 @@ const DEFAULT_GEMINI_API_KEY =
   process.env.GEMINI_API_KEY ||
   Buffer.from('QVEuQWI4Uk42TDFvaTBoYlRCdDNMREswTm81dkdsMFNXNV8zZVVlZnc4eTAzWEtaWHgxbUE=', 'base64').toString('utf-8');
 
-// Daily token quota requirement: 1,000 tokens per day
-const DAILY_TOKEN_LIMIT = 1000;
+// Daily token quota requirement: 1000000 tokens per day
+const DAILY_TOKEN_LIMIT = 1000000;
 
 // In-memory token tracker: key = `${userIdOrIp}_${YYYY-MM-DD}` -> tokensUsed
 const tokenUsageStore: Record<string, number> = {};
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
           success: false,
           error: 'DAILY_LIMIT_EXCEEDED',
           message:
-            'Daily limit reached (1,000 tokens/day). Your quota will reset tomorrow at midnight. Please contact the administrator for an allocation upgrade.',
+            `Daily limit reached (${DAILY_TOKEN_LIMIT.toLocaleString()} tokens/day). Your quota will reset tomorrow at midnight. Please contact the administrator for an allocation upgrade.`,
           dailyLimit: DAILY_TOKEN_LIMIT,
           usedToday: currentUsage,
           remainingToday: 0,

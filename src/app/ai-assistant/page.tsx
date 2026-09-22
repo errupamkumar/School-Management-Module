@@ -45,10 +45,10 @@ export default function AIAssistantPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeChatId, setActiveChatId] = useState<string>('new');
 
-  // Daily token tracking: 1,000 tokens per day limit
-  const [tokensRemaining, setTokensRemaining] = useState<number>(1000);
+  // Daily token tracking: 1,000,000 tokens per day limit
+  const [tokensRemaining, setTokensRemaining] = useState<number>(1000000);
   const [tokensUsedToday, setTokensUsedToday] = useState<number>(0);
-  const [dailyLimit, setDailyLimit] = useState<number>(1000);
+  const [dailyLimit, setDailyLimit] = useState<number>(1000000);
 
   const [recentChats, setRecentChats] = useState<RecentChat[]>([
     {
@@ -507,7 +507,7 @@ export default function AIAssistantPage() {
                       <span>Tip: enable Voice Wake above and just say &quot;Adam&quot;</span>
                     </span>
                     <p className="text-[11px] text-gray-400">
-                      🔒 Strictly bounded to Vidyalaya school data &amp; greetings • 1,000 tokens/day quota
+                      🔒 Strictly bounded to Vidyalaya school data &amp; greetings • 1,000,000 tokens/day quota
                     </p>
                   </div>
                 </div>
