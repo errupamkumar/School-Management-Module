@@ -41,8 +41,10 @@ export default function Sidebar() {
       aria-label="Main sidebar navigation"
       className={cn(
         'fixed left-0 top-0 h-screen h-[100dvh] bg-sidebar-bg text-white z-50 flex flex-col transition-all duration-300 ease-in-out',
-        // Mobile drawer positioning & transitions
-        isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0',
+        // Mobile drawer positioning & transitions: strictly invisible and pointer-events-none when closed
+        isMobileOpen
+          ? 'translate-x-0 shadow-2xl pointer-events-auto visible'
+          : '-translate-x-full pointer-events-none lg:pointer-events-auto invisible lg:visible',
         // Desktop widths vs Mobile widths
         'w-72 sm:w-80',
         isCollapsed ? 'lg:w-[68px]' : 'lg:w-64'

@@ -136,8 +136,8 @@ export default function Header() {
             <span>{t('downloadApp', 'Download App')}</span>
           </a>
 
-          {/* Institute / Campus selector */}
-          <div className="relative">
+          {/* Institute / Campus selector (Visible on md+ screens) */}
+          <div className="relative hidden md:block">
             <button
               onClick={() => setShowCampusSelect(!showCampusSelect)}
               className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-100/80 dark:border-purple-800/50 rounded-xl hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-colors"

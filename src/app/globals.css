@@ -36,6 +36,20 @@ body {
   overscroll-behavior-x: contain;
 }
 
+/* Universal mobile viewport & box-sizing safeguards */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+img, svg, video, canvas {
+  max-width: 100%;
+}
+
+main, section, article {
+  max-width: 100%;
+  min-width: 0;
+}
+
 /* Accessible focus ring for keyboard navigation */
 :focus-visible {
   outline: 2px solid #7c3aed;
