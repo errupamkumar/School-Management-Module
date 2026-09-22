@@ -48,11 +48,18 @@ interface RecentChat {
 export default function AIAssistantPage() {
   const { data: session } = useSession();
   const sessionUser = session?.user as any;
-  const initialRole: string = (sessionUser?.role || 'SUPER_ADMIN').toUpperCase();
-
-  // Active Role Scope: synced with logged in user or interactive test tabs
-  const [activeRole, setActiveRole] = useState<string>(initialRole);
-  const [activeUserName, setActiveUserName] = useState<string>(sessionUser?.name || 'Administrator');
+  const userRole: string = (sessionUser?.role || 'SUPER_ADMIN').toUpperCase();
+  const userName: string =
+    sessionUser?.name ||
+    (userRole === 'SUPER_ADMIN'
+      ? 'Dr. Anand Swaroop Pathak'
+      : userRole === 'ADMIN'
+      ? 'Administrator'
+      : userRole === 'TEACHER'
+      ? 'Teacher'
+      : userRole === 'PARENT'
+      ? 'Parent'
+      : 'Student');
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -67,21 +74,54 @@ export default function AIAssistantPage() {
   const [tokensUsedToday, setTokensUsedToday] = useState<number>(0);
   const [dailyLimit, setDailyLimit] = useState<number>(1000000);
 
-  // Sync role when session is loaded
-  useEffect(() => {
-    if (session?.user) {
-      const u = session.user as any;
-      const detectedRole = (u.role || 'SUPER_ADMIN').toUpperCase();
-      setActiveRole(detectedRole);
-      setActiveUserName(u.name || (detectedRole === 'SUPER_ADMIN' ? 'Dr. Anand Swaroop Pathak' : detectedRole));
+  // Dynamic Assistant Persona Tailored to Role & Profile Name
+  const getAssistantPersona = () => {
+    switch (userRole) {
+      case 'TEACHER':
+        return {
+          name: 'Teacher Copilot',
+          roleTitle: 'Academic & Classroom Assistant',
+          badge: 'Faculty',
+          subtitle: `Academic & Classroom Assistant • Personalized for ${userName}`,
+          greeting: `Welcome, ${userName}! I am your Academic Teaching Assistant for Vidyalaya. How can I assist with your classes, attendance, or lesson plans today?`,
+        };
+      case 'PARENT':
+        return {
+          name: 'Parent Portal Assistant',
+          roleTitle: 'Student Care & Guardian Companion',
+          badge: 'Parent',
+          subtitle: `Student Care & Guardian Companion • Personalized for ${userName}`,
+          greeting: `Welcome, ${userName}! I am your Parent Care Assistant for Vidyalaya. How can I help you check your child's attendance, fee receipts, or bus schedules today?`,
+        };
+      case 'STUDENT':
+        return {
+          name: 'Student Study Companion',
+          roleTitle: 'Learning & Timetable Assistant',
+          badge: 'Student',
+          subtitle: `Learning & Timetable Assistant • Personalized for ${userName}`,
+          greeting: `Hi, ${userName}! I am your Student Study Companion for Vidyalaya. How can I help you check your timetable, homework, or exam datesheets today?`,
+        };
+      case 'SUPER_ADMIN':
+      case 'ADMIN':
+      case 'ACCOUNTANT':
+      default:
+        return {
+          name: 'Admin Copilot',
+          roleTitle: 'Executive School Assistant',
+          badge: 'Administrator',
+          subtitle: `Institutional & Management Assistant • Personalized for ${userName}`,
+          greeting: `Welcome, ${userName}! I am your Executive School Assistant for Vidyalaya (Powered by SRM ECO TECH). How can I assist you with school operations, attendance, or fee collection today?`,
+        };
     }
-  }, [session]);
+  };
 
-  // Dynamic Recent Chats based on activeRole
+  const assistantPersona = getAssistantPersona();
+
+  // Dynamic Recent Chats strictly based on authenticated role
   const [recentChats, setRecentChats] = useState<RecentChat[]>([]);
 
   useEffect(() => {
-    if (activeRole === 'TEACHER') {
+    if (userRole === 'TEACHER') {
       setRecentChats([
         {
           id: 'chat-t1',
@@ -96,7 +136,7 @@ export default function AIAssistantPage() {
           preview: 'Created practical examination rubric...',
         },
       ]);
-    } else if (activeRole === 'PARENT') {
+    } else if (userRole === 'PARENT') {
       setRecentChats([
         {
           id: 'chat-p1',
@@ -111,7 +151,7 @@ export default function AIAssistantPage() {
           preview: 'Verified morning pickup & drop schedule...',
         },
       ]);
-    } else if (activeRole === 'STUDENT') {
+    } else if (userRole === 'STUDENT') {
       setRecentChats([
         {
           id: 'chat-s1',
@@ -142,7 +182,7 @@ export default function AIAssistantPage() {
         },
       ]);
     }
-  }, [activeRole]);
+  }, [userRole]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -222,22 +262,7 @@ export default function AIAssistantPage() {
     setMessages([]);
     setInputValue('');
     setActiveChatId(`chat-${Date.now()}`);
-    toast.success('Started a fresh conversation with Adam');
-  };
-
-  const handleRoleChange = (newRole: string) => {
-    setActiveRole(newRole);
-    setMessages([]);
-    const defaultName =
-      newRole === 'SUPER_ADMIN'
-        ? 'Dr. Anand Swaroop Pathak'
-        : newRole === 'TEACHER'
-        ? 'Rajesh Khanna'
-        : newRole === 'PARENT'
-        ? 'Rajesh Mishra'
-        : 'Aarav Sharma';
-    setActiveUserName(defaultName);
-    toast.success(`Active scope: ${newRole}`);
+    toast.success(`Started a fresh conversation with ${assistantPersona.name}`);
   };
 
   const sendMessage = async (promptText?: string) => {
@@ -267,8 +292,8 @@ export default function AIAssistantPage() {
         body: JSON.stringify({
           message: query,
           history: messages.slice(-4).map((m) => ({ sender: m.sender, text: m.text })),
-          role: activeRole,
-          userName: activeUserName,
+          role: userRole,
+          userName: userName,
           userEmail: sessionUser?.email,
         }),
       });
@@ -307,7 +332,7 @@ export default function AIAssistantPage() {
           setTokensRemaining(0);
           toast.error('Daily limit reached. Resets at midnight.');
         } else {
-          toast.error(data.message || 'Unable to connect to Adam.');
+          toast.error(data.message || `Unable to connect to ${assistantPersona.name}.`);
         }
 
         const errMsg: ChatMessage = {
@@ -327,7 +352,7 @@ export default function AIAssistantPage() {
 
   // Role-Based Starter Prompt Cards
   const getStarterPrompts = () => {
-    if (activeRole === 'TEACHER') {
+    if (userRole === 'TEACHER') {
       return [
         {
           id: 't1',
@@ -356,12 +381,12 @@ export default function AIAssistantPage() {
       ];
     }
 
-    if (activeRole === 'PARENT') {
+    if (userRole === 'PARENT') {
       return [
         {
           id: 'p1',
           icon: <Receipt size={20} />,
-          title: "My child's fee status & dues",
+          title: "My child's fee status & receipt",
           desc: 'Check pending term fees, payment receipts & upcoming due dates',
           accent: 'purple',
           prompt: "What is my child's current fee status, upcoming due date, and payment instructions?",
@@ -369,7 +394,7 @@ export default function AIAssistantPage() {
         {
           id: 'p2',
           icon: <CalendarCheck size={20} />,
-          title: "Child's attendance & leave application",
+          title: "Child's attendance & leave letter",
           desc: 'Check monthly attendance percentage and draft a student leave letter',
           accent: 'emerald',
           prompt: "Show my child's attendance record and help me draft a leave application for 2 days",
@@ -385,7 +410,7 @@ export default function AIAssistantPage() {
       ];
     }
 
-    if (activeRole === 'STUDENT') {
+    if (userRole === 'STUDENT') {
       return [
         {
           id: 's1',
@@ -419,10 +444,10 @@ export default function AIAssistantPage() {
       {
         id: 'a1',
         icon: <PieChart size={20} />,
-        title: 'School report with charts',
+        title: 'Institutional report & metrics',
         desc: 'Students, fees, attendance & financial metrics visualized',
         accent: 'purple',
-        prompt: 'Give school report with charts for students, attendance and fee overview',
+        prompt: 'Give school report for students, attendance and fee overview',
       },
       {
         id: 'a2',
@@ -436,7 +461,7 @@ export default function AIAssistantPage() {
         id: 'a3',
         icon: <Wallet size={20} />,
         title: 'Pending fees & defaulters overview',
-        desc: 'See who hasn’t paid (₹4.85L dues) — and draft collection reminders',
+        desc: 'See outstanding institutional dues and draft collection reminders',
         accent: 'amber',
         prompt: 'Give pending fees summary and reminder message in chat form',
       },
@@ -445,96 +470,38 @@ export default function AIAssistantPage() {
 
   const starterPrompts = getStarterPrompts();
 
-  // Role Scope Display Name
-  const getRoleScopeLabel = () => {
-    switch (activeRole) {
-      case 'SUPER_ADMIN':
-      case 'ADMIN':
-        return 'Super Admin Scope • Full Institutional & Financial Access';
-      case 'ACCOUNTANT':
-        return 'Accountant Scope • Finance, Fees & Payroll';
-      case 'TEACHER':
-        return 'Teacher Scope • Academic, Homework & Attendance';
-      case 'PARENT':
-        return 'Parent Portal • Ward Records & Fees';
-      case 'STUDENT':
-        return 'Student Portal • Timetable & Study Schedule';
-      default:
-        return 'General User Scope';
-    }
-  };
-
   return (
     <DashboardLayout>
       <div className="space-y-4 max-w-7xl mx-auto pb-8">
-        {/* Header Breadcrumb & Actions */}
+        {/* Header Breadcrumb & Profile Status Pill (Strict RBAC - No manual role switching) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
-            <span className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200 min-w-0">
+            <span className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400 flex-shrink-0">
               <Sparkles size={16} />
               <span>AI Assistant</span>
             </span>
             <span className="text-gray-400">&gt;</span>
-            <span className="text-gray-500 dark:text-gray-400 font-normal">Chat</span>
+            <span className="text-gray-500 dark:text-gray-400 font-normal truncate">
+              {assistantPersona.name}
+            </span>
           </div>
 
-          {/* Interactive Role Switcher Tabs */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-slate-800 rounded-xl">
-              <button
-                type="button"
-                onClick={() => handleRoleChange('SUPER_ADMIN')}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all',
-                  activeRole === 'SUPER_ADMIN' || activeRole === 'ADMIN'
-                    ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
-                )}
-              >
-                👑 Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRoleChange('TEACHER')}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all',
-                  activeRole === 'TEACHER'
-                    ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
-                )}
-              >
-                👨‍🏫 Teacher
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRoleChange('PARENT')}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all',
-                  activeRole === 'PARENT'
-                    ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
-                )}
-              >
-                👨‍👩‍👦 Parent
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRoleChange('STUDENT')}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all',
-                  activeRole === 'STUDENT'
-                    ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
-                )}
-              >
-                🎓 Student
-              </button>
+          {/* Profile Identity Pill & New Chat Button */}
+          <div className="flex items-center gap-2 flex-wrap justify-between sm:justify-end">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-slate-800/80 border border-gray-200/70 dark:border-slate-700/80 rounded-xl text-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+              <span className="font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[120px] sm:max-w-none">
+                {userName}
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 uppercase tracking-wide flex-shrink-0">
+                {assistantPersona.badge}
+              </span>
             </div>
 
             <button
               type="button"
               onClick={handleNewChat}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow-sm transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow-sm transition-colors flex-shrink-0"
             >
               <Plus size={14} />
               <span>New Chat</span>
@@ -544,11 +511,11 @@ export default function AIAssistantPage() {
 
         {/* Main AI Workspace Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
-          {/* Left: Recent Chats (Hidden on mobile, drawer view) */}
+          {/* Left: Recent Chats (Collapsible / hidden on mobile, visible on desktop) */}
           <div className="hidden lg:block lg:col-span-1 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 p-4 shadow-sm min-h-[520px]">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Recent Chats</h3>
-              <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">{activeRole}</span>
+              <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">{assistantPersona.badge}</span>
             </div>
 
             {recentChats.length === 0 ? (
@@ -583,52 +550,52 @@ export default function AIAssistantPage() {
           {/* Center/Right: AI Chat Arena */}
           <div className="lg:col-span-3 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col h-[650px] sm:h-[720px] overflow-hidden">
             {/* Top Persona Bar */}
-            <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between flex-shrink-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
-              <div className="flex items-center gap-3">
+            <div className="p-3.5 sm:p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between flex-shrink-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm gap-2">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-600/20 flex-shrink-0">
                   <Sparkles size={20} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5 flex-wrap">
-                    <span>Adam</span>
+                    <span>{assistantPersona.name}</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-300 font-semibold">
                       SRM ECO TECH
                     </span>
                     <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-medium">
-                      {activeUserName} ({activeRole})
+                      {userName} ({assistantPersona.badge})
                     </span>
                   </h2>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">{getRoleScopeLabel()}</p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{assistantPersona.subtitle}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 justify-end">
                 {/* Daily Token Badge (1,000,000 token limit requirement) */}
                 <span
                   title={`Daily limit: ${dailyLimit.toLocaleString()} tokens/day. Resets daily.`}
                   className={cn(
-                    'px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors flex items-center gap-1 shadow-sm',
+                    'px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-semibold border transition-colors flex items-center gap-1 shadow-sm whitespace-nowrap',
                     tokensRemaining > 200000
                       ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
                       : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
                   )}
                 >
-                  <span>⚡ Daily Plan •</span>
+                  <span>⚡ Plan •</span>
                   <span className="font-bold">{tokensRemaining.toLocaleString()}</span>
-                  <span className="text-gray-400">/ {dailyLimit.toLocaleString()} tokens left</span>
+                  <span className="hidden md:inline text-gray-400">/ {dailyLimit.toLocaleString()} tokens left</span>
                 </span>
 
                 {/* Voice Wake Switch */}
                 <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  <span>Voice Wake</span>
+                  <span className="whitespace-nowrap">Voice Wake</span>
                   <button
                     type="button"
                     onClick={() => {
                       setVoiceWake(!voiceWake);
-                      toast(voiceWake ? 'Voice Wake disabled' : 'Voice Wake enabled: say "Adam"');
+                      toast(voiceWake ? 'Voice Wake disabled' : `Voice Wake enabled: say "Hey ${assistantPersona.name}"`);
                     }}
                     className={cn(
-                      'w-10 h-5 rounded-full transition-colors relative focus:outline-none',
+                      'w-10 h-5 rounded-full transition-colors relative focus:outline-none flex-shrink-0',
                       voiceWake ? 'bg-purple-600' : 'bg-gray-300 dark:bg-slate-700'
                     )}
                   >
@@ -644,31 +611,31 @@ export default function AIAssistantPage() {
             </div>
 
             {/* Conversation Timeline */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 touch-scroll">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 touch-scroll">
               {messages.length === 0 ? (
                 /* Role-Based Starter Prompt Suggestions View */
-                <div className="max-w-2xl mx-auto py-4 sm:py-6 space-y-5">
+                <div className="max-w-2xl mx-auto py-3 sm:py-6 space-y-4 sm:space-y-5">
                   <div className="text-center space-y-1">
-                    <p className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200">
-                      Welcome, {activeUserName}! ({activeRole})
+                    <p className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200">
+                      Welcome, {userName}! ({assistantPersona.badge})
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Your school AI assistant is ready for your role. Ask anything or pick a sample question below:
+                    <p className="text-xs text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
+                      {assistantPersona.greeting}
                     </p>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2.5 sm:space-y-3">
                     {starterPrompts.map((item) => (
                       <button
                         key={item.id}
                         type="button"
                         onClick={() => sendMessage(item.prompt)}
-                        className="w-full text-left p-4 rounded-2xl border border-gray-100 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-all flex items-center justify-between group shadow-sm"
+                        className="w-full text-left p-3.5 sm:p-4 rounded-2xl border border-gray-100 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-all flex items-center justify-between group shadow-sm gap-2"
                       >
-                        <div className="flex items-center gap-3.5">
+                        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
                           <div
                             className={cn(
-                              'w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0',
+                              'w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center flex-shrink-0',
                               item.accent === 'emerald'
                                 ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-300'
                                 : item.accent === 'amber'
@@ -678,11 +645,11 @@ export default function AIAssistantPage() {
                           >
                             {item.icon}
                           </div>
-                          <div>
-                            <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-purple-600 transition-colors">
+                          <div className="min-w-0">
+                            <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-purple-600 transition-colors truncate">
                               {item.title}
                             </h4>
-                            <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">{item.desc}</p>
+                            <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{item.desc}</p>
                           </div>
                         </div>
                         <ArrowRight
@@ -697,38 +664,38 @@ export default function AIAssistantPage() {
                   <div className="pt-2 text-center space-y-2">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-medium border border-purple-100 dark:border-purple-900">
                       <Mic size={13} />
-                      <span>Tip: enable Voice Wake above and just say &quot;Adam&quot;</span>
+                      <span>Voice enabled: click microphone below or enable voice wake</span>
                     </span>
                     <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400">
                       <ShieldCheck size={13} className="text-emerald-500" />
-                      <span>Role-Based Access Control Active: {getRoleScopeLabel()}</span>
+                      <span>Role-Based Access Control Active: {assistantPersona.subtitle}</span>
                     </div>
                   </div>
                 </div>
               ) : (
-                /* Chat Messages History with Robust MarkdownRenderer */
+                /* Chat Messages History with MarkdownRenderer */
                 messages.map((msg) => (
                   <div
                     key={msg.id}
                     className={cn(
-                      'flex gap-3 max-w-2xl',
+                      'flex gap-2 sm:gap-3 max-w-full sm:max-w-2xl',
                       msg.sender === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'
                     )}
                   >
                     <div
                       className={cn(
-                        'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm',
+                        'w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm',
                         msg.sender === 'user'
                           ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white'
                           : 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
                       )}
                     >
-                      {msg.sender === 'user' ? <User size={15} /> : <Sparkles size={15} />}
+                      {msg.sender === 'user' ? <User size={14} /> : <Sparkles size={14} />}
                     </div>
 
                     <div
                       className={cn(
-                        'rounded-2xl p-4 text-xs sm:text-sm leading-relaxed shadow-sm relative group',
+                        'rounded-2xl p-3.5 sm:p-4 text-xs sm:text-sm leading-relaxed shadow-sm relative group max-w-[88%] sm:max-w-[82%] break-words',
                         msg.sender === 'user'
                           ? 'bg-purple-600 text-white rounded-tr-none'
                           : 'bg-gray-50 dark:bg-slate-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-slate-700 rounded-tl-none space-y-2.5'
@@ -736,19 +703,19 @@ export default function AIAssistantPage() {
                     >
                       {/* Assistant Top bar with copy action */}
                       {msg.sender === 'assistant' && (
-                        <div className="flex items-center justify-between pb-1.5 border-b border-gray-200/60 dark:border-slate-700/60 text-[11px] text-gray-400">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-semibold text-purple-600 dark:text-purple-400">
-                              Adam (Vidyalaya AI)
+                        <div className="flex items-center justify-between pb-1.5 border-b border-gray-200/60 dark:border-slate-700/60 text-[11px] text-gray-400 gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0 truncate">
+                            <span className="font-semibold text-purple-600 dark:text-purple-400 truncate">
+                              {assistantPersona.name}
                             </span>
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 font-medium">
-                              {activeRole}
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 font-medium flex-shrink-0">
+                              {assistantPersona.badge}
                             </span>
                           </div>
                           <button
                             type="button"
                             onClick={() => handleCopyText(msg.id, msg.text)}
-                            className="flex items-center gap-1 hover:text-purple-600 dark:hover:text-purple-300 transition-colors"
+                            className="flex items-center gap-1 hover:text-purple-600 dark:hover:text-purple-300 transition-colors flex-shrink-0"
                             title="Copy response"
                           >
                             {copiedId === msg.id ? (
@@ -756,12 +723,12 @@ export default function AIAssistantPage() {
                             ) : (
                               <Copy size={12} />
                             )}
-                            <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
+                            <span className="hidden sm:inline">{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
                           </button>
                         </div>
                       )}
 
-                      {/* Message Content rendered via industrial MarkdownRenderer */}
+                      {/* Message Content rendered via robust MarkdownRenderer */}
                       {msg.sender === 'user' ? (
                         <p className="whitespace-pre-line">{msg.text}</p>
                       ) : (
@@ -783,17 +750,17 @@ export default function AIAssistantPage() {
 
               {/* Thinking Indicator */}
               {isThinking && (
-                <div className="flex gap-3 max-w-sm mr-auto">
-                  <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center justify-center flex-shrink-0 text-xs font-bold animate-pulse">
-                    <Sparkles size={15} />
+                <div className="flex gap-2 sm:gap-3 max-w-sm mr-auto">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center justify-center flex-shrink-0 text-xs font-bold animate-pulse">
+                    <Sparkles size={14} />
                   </div>
-                  <div className="rounded-2xl p-3.5 bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-tl-none flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 shadow-sm">
+                  <div className="rounded-2xl p-3 sm:p-3.5 bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-tl-none flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 shadow-sm">
                     <div className="flex gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce" />
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce [animation-delay:0.2s]" />
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce [animation-delay:0.4s]" />
                     </div>
-                    <span>Adam is consulting authorized records for {activeRole}...</span>
+                    <span className="truncate">{assistantPersona.name} is consulting authorized records for {userName}...</span>
                   </div>
                 </div>
               )}
@@ -820,7 +787,7 @@ export default function AIAssistantPage() {
                 }}
                 className="flex items-center gap-2"
               >
-                <div className="relative flex-1">
+                <div className="relative flex-1 min-w-0">
                   <input
                     type="text"
                     value={inputValue}
@@ -829,17 +796,9 @@ export default function AIAssistantPage() {
                     placeholder={
                       tokensRemaining <= 0
                         ? 'Daily quota exhausted (1,000,000 tokens/day)'
-                        : `Ask Adam (${activeRole} scope: ${
-                            activeRole === 'PARENT'
-                              ? "child's fees, attendance, bus..."
-                              : activeRole === 'TEACHER'
-                              ? 'class attendance, homework, exams...'
-                              : activeRole === 'STUDENT'
-                              ? 'timetable, homework, holidays...'
-                              : 'school overview, fees, announcements...'
-                          })`
+                        : `Ask ${assistantPersona.name} (${userRole === 'PARENT' ? "child's fees, attendance, bus..." : userRole === 'TEACHER' ? 'class attendance, homework, exams...' : userRole === 'STUDENT' ? 'timetable, homework, holidays...' : 'school overview, fees, announcements...'})`
                     }
-                    className="w-full pl-4 pr-10 py-2.5 sm:py-3 bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-2xl text-xs sm:text-sm text-gray-900 dark:text-gray-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-all placeholder:text-gray-400 disabled:opacity-50"
+                    className="w-full pl-3.5 pr-9 sm:pl-4 sm:pr-10 py-2.5 sm:py-3 bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-2xl text-xs sm:text-sm text-gray-900 dark:text-gray-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-all placeholder:text-gray-400 disabled:opacity-50"
                   />
                   <button
                     type="button"
@@ -847,7 +806,7 @@ export default function AIAssistantPage() {
                     disabled={tokensRemaining <= 0}
                     aria-label={isListening ? 'Stop listening' : 'Start voice input'}
                     className={cn(
-                      'absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors disabled:opacity-30',
+                      'absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors disabled:opacity-30',
                       isListening
                         ? 'text-rose-600 bg-rose-50 dark:bg-rose-950 animate-pulse'
                         : 'text-gray-400 hover:text-purple-600'

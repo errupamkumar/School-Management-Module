@@ -59,15 +59,43 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Message is required' }, { status: 400 });
     }
 
-    // 1. Resolve User Session & RBAC Role
+    // 1. Resolve User Session & RBAC Role STRICTLY from server session
     const session = await getServerSession(authOptions);
     const sessionRole = (session?.user as any)?.role?.toUpperCase();
-    const role: string = (body.role || sessionRole || 'STUDENT').toUpperCase();
-    const userName: string = body.userName || session?.user?.name || (role === 'SUPER_ADMIN' ? 'Dr. Anand Swaroop Pathak' : 'User');
 
-    // 2. Identify client for daily token rate-limiting
+    // STRICT SECURITY: Role is determined exclusively from the authenticated session.
+    // Client cannot escalate privileges. Unauthenticated requests default strictly to lowest privilege 'STUDENT'.
+    const role: string = sessionRole || 'STUDENT';
+    const userName: string =
+      session?.user?.name ||
+      (role === 'SUPER_ADMIN'
+        ? 'Dr. Anand Swaroop Pathak'
+        : role === 'ADMIN'
+        ? 'Administrator'
+        : role === 'TEACHER'
+        ? 'Teacher'
+        : role === 'PARENT'
+        ? 'Parent'
+        : 'Student');
+
+    // 2. Persona configuration tailored to role and user profile
+    let assistantPersonaName = 'Admin Copilot';
+    let assistantRoleTitle = 'Executive School Management Assistant';
+
+    if (role === 'TEACHER') {
+      assistantPersonaName = 'Teacher Copilot';
+      assistantRoleTitle = 'Academic & Classroom Assistant';
+    } else if (role === 'PARENT') {
+      assistantPersonaName = 'Parent Care Assistant';
+      assistantRoleTitle = 'Student Care & Guardian Companion';
+    } else if (role === 'STUDENT') {
+      assistantPersonaName = 'Student Study Companion';
+      assistantRoleTitle = 'Learning & Timetable Assistant';
+    }
+
+    // 3. Identify client for daily token rate-limiting
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'default_user';
-    const identifier = session?.user?.email || body.userEmail || ip;
+    const identifier = session?.user?.email || ip;
     const usageKey = getTodayKey(identifier);
     const currentUsage = tokenUsageStore[usageKey] || 0;
 
@@ -85,7 +113,58 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Fetch live school context stats from database
+    // 4. Data Isolation & Security Interceptor for Non-Admin roles
+    const qLower = message.toLowerCase().trim();
+    const isFinancialQuery = /(fee|dues|payment|defaulter|balance|profit|revenue|expense|salary|salaries|payroll|turnover|receivable)/i.test(qLower);
+    const isInstitutionalScope = /(all\s*students|entire\s*school|total\s*collection|institute|school\s*report|all\s*teachers|school\s*revenue|profit)/i.test(qLower);
+
+    // Hard server-side security checks before calling AI
+    if (role === 'STUDENT' && isFinancialQuery) {
+      const refusal = `🚫 **Access Restricted (Student Scope)**: You are logged in as **${userName}** (Student). Institutional financial data, fee balances, and school accounts are confidential and restricted to School Administrators.\n\nAs your **${assistantPersonaName}**, I can help you with your **class timetable**, **pending homework**, **exam datesheets**, and **study concepts**!`;
+      return NextResponse.json({
+        success: true,
+        answer: refusal,
+        tokensUsed: 25,
+        totalTokensToday: currentUsage + 25,
+        tokensRemaining: Math.max(0, DAILY_TOKEN_LIMIT - (currentUsage + 25)),
+        dailyLimit: DAILY_TOKEN_LIMIT,
+        model: 'security-guard',
+        role,
+        personaName: assistantPersonaName,
+      });
+    }
+
+    if (role === 'PARENT' && (isInstitutionalScope || (isFinancialQuery && /(total|all|school|institute|defaulter|profit|revenue)/i.test(qLower)))) {
+      const refusal = `🚫 **Access Restricted (Parent Scope)**: Institutional financial reports, overall school fee balances, and institute accounts are restricted to School Administrators.\n\nAs your **${assistantPersonaName}**, you can review your ward's records:\n- **Student:** Aarav Mishra (Class 10-A, Roll No. 12)\n- **Term 1 Fees:** Cleared in full ✅\n- **Term 2 Fees:** ₹4,500 due on the 15th of next month\n- **Attendance:** 94.2% this term\n\nWould you like a fee receipt breakdown or details on your child's bus route timings?`;
+      return NextResponse.json({
+        success: true,
+        answer: refusal,
+        tokensUsed: 35,
+        totalTokensToday: currentUsage + 35,
+        tokensRemaining: Math.max(0, DAILY_TOKEN_LIMIT - (currentUsage + 35)),
+        dailyLimit: DAILY_TOKEN_LIMIT,
+        model: 'security-guard',
+        role,
+        personaName: assistantPersonaName,
+      });
+    }
+
+    if (role === 'TEACHER' && isFinancialQuery) {
+      const refusal = `🚫 **Access Restricted (Teacher Scope)**: Institutional fee collection balances, financial accounts, and staff salaries are confidential and restricted to School Administrators.\n\nAs your **${assistantPersonaName}**, I can assist you with:\n- **Today's Class 10-A Attendance:** 38/40 present (2 absent: Rohan Verma, Kabir Singh)\n- **Syllabus & Homework:** Class 10 Math & Science lesson plans\n- **Upcoming Milestones:** Half-Yearly practical exams commencing Oct 15\n\nHow can I help you with your classroom activities today, ${userName}?`;
+      return NextResponse.json({
+        success: true,
+        answer: refusal,
+        tokensUsed: 35,
+        totalTokensToday: currentUsage + 35,
+        tokensRemaining: Math.max(0, DAILY_TOKEN_LIMIT - (currentUsage + 35)),
+        dailyLimit: DAILY_TOKEN_LIMIT,
+        model: 'security-guard',
+        role,
+        personaName: assistantPersonaName,
+      });
+    }
+
+    // 5. Fetch live school stats (only for Admin role context)
     let schoolStats = {
       totalStudents: 1100,
       totalTeachers: 68,
@@ -94,31 +173,33 @@ export async function POST(req: NextRequest) {
       totalClasses: 12,
     };
 
-    try {
-      const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'ACCOUNTANT') {
+      try {
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-      const [studentCount, teacherCount, presentCount, duesSum, classCount] = await Promise.all([
-        prisma.student.count({ where: { isActive: true } }),
-        prisma.teacher.count({ where: { isActive: true } }),
-        prisma.attendance.count({ where: { date: { gte: startOfDay }, status: 'PRESENT' } }),
-        prisma.feePayment.aggregate({
-          where: { paymentStatus: { in: ['UNPAID', 'PARTIAL', 'OVERDUE'] } },
-          _sum: { balanceAmount: true },
-        }),
-        prisma.class.count(),
-      ]);
+        const [studentCount, teacherCount, presentCount, duesSum, classCount] = await Promise.all([
+          prisma.student.count({ where: { isActive: true } }),
+          prisma.teacher.count({ where: { isActive: true } }),
+          prisma.attendance.count({ where: { date: { gte: startOfDay }, status: 'PRESENT' } }),
+          prisma.feePayment.aggregate({
+            where: { paymentStatus: { in: ['UNPAID', 'PARTIAL', 'OVERDUE'] } },
+            _sum: { balanceAmount: true },
+          }),
+          prisma.class.count(),
+        ]);
 
-      if (studentCount > 0) schoolStats.totalStudents = studentCount;
-      if (teacherCount > 0) schoolStats.totalTeachers = teacherCount;
-      if (presentCount > 0) schoolStats.presentToday = presentCount;
-      if (duesSum._sum.balanceAmount) schoolStats.totalDues = duesSum._sum.balanceAmount;
-      if (classCount > 0) schoolStats.totalClasses = classCount;
-    } catch (dbErr) {
-      // Use fallback school stats if DB is unavailable
+        if (studentCount > 0) schoolStats.totalStudents = studentCount;
+        if (teacherCount > 0) schoolStats.totalTeachers = teacherCount;
+        if (presentCount > 0) schoolStats.presentToday = presentCount;
+        if (duesSum._sum.balanceAmount) schoolStats.totalDues = duesSum._sum.balanceAmount;
+        if (classCount > 0) schoolStats.totalClasses = classCount;
+      } catch (dbErr) {
+        // Fallback stats used
+      }
     }
 
-    // 4. Construct Role-Based Access Control (RBAC) System Instructions
+    // 6. Build Role-Based Scope & System Instructions
     let roleContext = '';
     let roleRestrictions = '';
 
@@ -131,12 +212,12 @@ AUTHORIZED DATA:
 - Total Faculty & Staff: ${schoolStats.totalTeachers} employees (Academic Teachers, Admin & Operations)
 - Students Present Today: ${schoolStats.presentToday} / ${schoolStats.totalStudents}
 - Fee Collection This Month: ₹3,25,000 (Collection Rate: ~82%)
-- Total Fee Pending Dues: ₹${schoolStats.totalDues.toLocaleString('en-IN')} (High priority defaulters: 14 students across Class 10-A, 9-B, 8-A)
+- Total Fee Pending Dues: ₹${schoolStats.totalDues.toLocaleString('en-IN')} (Defaulters: Class 10-A, 9-B, 8-A)
 - Monthly Net Profit: ₹1,45,000 | Total Expenses: ₹1,80,000
-- Permitted Queries: Full school overview reports with text charts, fee collection summaries, broadcast SMS/WhatsApp drafts, staff payroll, system configuration.
+- Permitted Queries: Full school overview reports, fee collection summaries, broadcast SMS/WhatsApp drafts, staff payroll, system configuration.
 `;
       roleRestrictions = `
-You may provide full institutional statistics, financial summaries, fee balances, and administrative reports when requested by this Administrator.
+You may provide institutional statistics, financial summaries, fee balances, and administrative reports when requested by this Administrator.
 `;
     } else if (role === 'TEACHER') {
       roleContext = `
@@ -150,11 +231,9 @@ AUTHORIZED DATA:
 - Permitted Topics: Class attendance roster, student homework assignments, lesson plans, exam question blueprints, grading rubrics, study tips.
 `;
       roleRestrictions = `
-STRICT SECURITY RESTRICTION: The user is a TEACHER. 
-PROHIBITED DATA: Institutional fee collection balances (e.g. ₹4.85L), school financial profits/revenue, school bank accounts, other teachers' or staff payroll/salaries, and overall institute expenditure.
-IF THE TEACHER ASKS ABOUT ANY RESTRICTED FINANCIAL TOPIC (e.g. "total fee balance", "fee collection summary", "school profit", "staff salaries", "financial overview"):
-YOU MUST POLITELY REFUSE AND STATE:
-"🚫 **Access Restricted (Teacher Role)**: Institutional financial reports, fee collection balances, and staff salaries are confidential and restricted to School Administrators. As a Teacher, I can assist you with your class attendance, grading, homework assignments, student lesson plans, and exam schedules."
+STRICT RESTRICTION: The user is a TEACHER.
+Institutional fee balances, school financial profits/revenue, school bank accounts, staff salaries/payroll, and overall expenditure are prohibited.
+Refuse any institutional financial queries immediately and redirect to classroom management.
 `;
     } else if (role === 'PARENT') {
       roleContext = `
@@ -169,11 +248,9 @@ AUTHORIZED DATA:
 - Permitted Topics: Their child's attendance record, personal fee dues, homework assigned to their child, school calendar, transport bus timings, PTM notices, leave applications.
 `;
       roleRestrictions = `
-STRICT SECURITY RESTRICTION: The user is a PARENT.
-PROHIBITED DATA: Overall school-wide financials, total school fee balances (e.g. ₹4.85L), school-wide student lists, staff payroll, or other students' private records.
-IF THE PARENT ASKS ABOUT ANY RESTRICTED TOPIC (e.g. "Give school report with charts for all students and fee overview", "total fee balance?", "show fee collection", "what is school revenue"):
-YOU MUST POLITELY REFUSE AND STATE:
-"🚫 **Access Restricted (Parent Portal)**: Overall institutional reports and school financial balances are restricted to School Administrators. As a Parent, you can view your child's fee receipts, attendance record, homework assignments, and school circulars. Would you like to check your child's attendance or upcoming fee schedule?"
+STRICT RESTRICTION: The user is a PARENT.
+Overall school-wide financials, total school fee balances, school-wide student lists, staff payroll, or other students' private records are prohibited.
+Refuse any institutional financial queries immediately.
 `;
     } else if (role === 'STUDENT') {
       roleContext = `
@@ -191,38 +268,40 @@ AUTHORIZED DATA:
 - Exam Datesheet: Half-Yearly examinations commence from October 15, 2026.
 `;
       roleRestrictions = `
-STRICT SECURITY RESTRICTION: The user is a STUDENT.
-PROHIBITED DATA: All financial data, fee balances, administrative operations, staff payroll, or confidential school records.
-IF THE STUDENT ASKS ABOUT ANY FINANCIAL OR ADMINISTRATIVE TOPIC:
-YOU MUST POLITELY REFUSE AND STATE:
-"🚫 **Access Restricted (Student Portal)**: You are logged in as a Student. Administrative and financial data are restricted. I can help you with your class timetable, homework assignments, exam datesheets, and study tips!"
+STRICT RESTRICTION: The user is a STUDENT.
+All financial data, fee balances, administrative operations, staff payroll, or confidential school records are prohibited.
+Refuse any administrative or financial queries immediately.
 `;
     }
 
     const systemInstruction = `
-You are "Adam", the dedicated AI School Assistant for "Vidyalaya - School Management System" (Powered by SRM ECO TECH).
-Super Admin: Dr. Anand Swaroop Pathak.
+You are "${assistantPersonaName}" (${assistantRoleTitle}) for "Vidyalaya - School Management System" (Powered by SRM ECO TECH).
+User: ${userName} (Role: ${role}).
 Campus: Vidyalaya Senior Secondary Campus, Patna, Bihar, India.
 
 ${roleContext}
 
 ${roleRestrictions}
 
-GENERAL OPERATIONAL RULES:
-1. ONLY answer questions related to this Vidyalaya School Management System, within the exact permissions of the user's role (${role}), and polite greetings (e.g. "hi", "hello", "good morning", "how are you", "who are you", "thank you").
-2. STRICT REFUSAL FOR OUT-OF-SCOPE GENERAL QUERIES: If the user asks ANY question outside of this school management portal (e.g. coding unrelated scripts, general world knowledge, recipes, entertainment, sports, politics), refuse by stating:
-   "I am Adam, the dedicated AI assistant for Vidyalaya School Management System (Powered by SRM ECO TECH). I can only assist with this school portal, student records, fee collection, attendance, schedules, announcements, and institute management. How can I help you with school operations today?"
-3. FORMAT COMPLIANCE: If the user asks for a specific format (e.g. "in chat form", "in table form", "bullet points", "as an SMS/WhatsApp announcement", "text chart"):
-   - When asked for "chat form", provide natural conversational chat text.
-   - When asked for "charts" or metric distributions, format each distribution item cleanly with labels, bracketed bars [████████████] and percentage/count (e.g. "Primary (Nursery - 5) [████████████] 45% (450 Students)") so our interface renders it as a modern visual progress bar chart.
+CRITICAL RULES:
+1. GREETING & PERSONA:
+   - Identify yourself as "${assistantPersonaName}", the dedicated ${assistantRoleTitle} assisting ${userName} (${role}).
+   - Never use a generic one-size-fits-all persona name. Tailor your tone and greeting specifically to ${userName} as their ${assistantPersonaName}.
+2. SCOPE OF ASSISTANCE:
+   - ONLY answer questions related to this Vidyalaya School Management System within the user's role permissions, and polite greetings.
+   - For any query outside of this school portal (e.g. general coding, recipes, entertainment, sports, politics), politely decline:
+     "I am ${assistantPersonaName}, the dedicated ${assistantRoleTitle} for Vidyalaya School Management System (Powered by SRM ECO TECH). I can only assist with this school portal within your authorized permissions. How can I help you today?"
+3. ABSOLUTE BAN ON SOLID ASCII BLOCKS ("BULLAR"):
+   - NEVER EVER output solid Unicode block characters (such as █, ▇, ■, ▓, ▌, ░, ▒), ASCII bar characters, or bracketed block bars like [██] or [██████] anywhere in your responses!
+   - When presenting metric distributions, fee summaries, or statistics, express them clearly using numbers, percentages, bullet points, or standard markdown tables (e.g. "Pending Dues: ₹4,85,000 (~18% of total fee receivables)").
+   - Never draw bracketed bars or block charts in raw text.
 4. Keep answers concise, helpful, and professional within daily token allocations.
 `.trim();
 
-    // 5. Format conversation history for Gemini API
+    // 7. Format conversation history for Gemini API
     const formattedContents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
 
     if (Array.isArray(history) && history.length > 0) {
-      // Include last 4 messages to preserve context while keeping token usage low
       const recent = history.slice(-4);
       for (const item of recent) {
         formattedContents.push({
@@ -232,13 +311,12 @@ GENERAL OPERATIONAL RULES:
       }
     }
 
-    // Append current user message
     formattedContents.push({
       role: 'user',
       parts: [{ text: message.trim() }],
     });
 
-    // 6. Call Google Gemini API with cascade fallback across supported models
+    // 8. Call Google Gemini API with cascade fallback across supported models
     let answerText = '';
     let totalTokensUsed = 0;
     let successfulModel = '';
@@ -258,7 +336,7 @@ GENERAL OPERATIONAL RULES:
             },
             contents: formattedContents,
             generationConfig: {
-              temperature: 0.3,
+              temperature: 0.25,
               maxOutputTokens: 550,
               topP: 0.85,
             },
@@ -287,25 +365,49 @@ GENERAL OPERATIONAL RULES:
     }
 
     if (!answerText) {
-      // Intelligent fallback matching exact role permissions
+      // Intelligent fallback matching exact role permissions and persona
       const q = message.toLowerCase();
-      if (role === 'PARENT' && (q.includes('fee') && (q.includes('all') || q.includes('total') || q.includes('balance') || q.includes('overview')))) {
-        answerText = `🚫 **Access Restricted (Parent Portal)**: Overall institutional reports and school financial balances are restricted to School Administrators. As a Parent, you can view your child's fee receipts, attendance record, homework assignments, and school circulars. Your ward (Aarav Mishra) has Term 1 fees cleared; Term 2 fee (₹4,500) is due by the 15th of next month.`;
-      } else if (role === 'TEACHER' && (q.includes('fee') || q.includes('dues') || q.includes('profit') || q.includes('salary'))) {
-        answerText = `🚫 **Access Restricted (Teacher Role)**: Institutional financial reports, fee collection balances, and staff salaries are confidential and restricted to School Administrators. As a Teacher, I can assist you with your class attendance, grading, homework assignments, student lesson plans, and exam schedules.`;
-      } else if (q.includes('fee') || q.includes('due') || q.includes('payment')) {
-        answerText = `📊 **Fee Collection Overview (Admin Scope)**\n\n- **Total Outstanding Dues:** ₹${schoolStats.totalDues.toLocaleString('en-IN')}\n- **Collection Rate:** ~82% this cycle\n- **Action Available:** You can trigger automated fee reminder SMS/WhatsApp notifications under the **Fees** module.\n\n*Powered by SRM ECO TECH*`;
-      } else if (q.includes('attendance') || q.includes('present') || q.includes('absent')) {
-        answerText = `📅 **Today's Attendance Status**\n\n- **Students Present:** ${schoolStats.presentToday} / ${schoolStats.totalStudents} (${Math.round((schoolStats.presentToday / schoolStats.totalStudents) * 100)}%)\n- **Staff Present:** ${schoolStats.totalTeachers} / ${schoolStats.totalTeachers}\n- **Modes:** Manual Roster entry & Card/Barcode scanning available under **Attendance**.\n\n*Powered by SRM ECO TECH*`;
-      } else if (q.includes('hi') || q.includes('hello') || q.includes('adam') || q.includes('who are you')) {
-        answerText = `Hello ${userName}! I am **Adam**, the dedicated AI assistant for **Vidyalaya School Management System** (Powered by **SRM ECO TECH**). \n\nI am configured for your role as **${role}**. How can I assist you with your school activities today?`;
+      if (role === 'PARENT') {
+        if (q.includes('fee') || q.includes('due') || q.includes('payment')) {
+          answerText = `💳 **Ward Fee Status (Aarav Mishra - Class 10-A)**\n\n- **Term 1:** Paid in full ✅ (Receipt #RCP-2026-0814)\n- **Term 2 Dues:** ₹4,500\n- **Due Date:** 15th of next month (No late fee applicable)\n- **Online Payment:** Available under **Fees > Pay Online**\n\n*Powered by SRM ECO TECH*`;
+        } else if (q.includes('bus') || q.includes('transport')) {
+          answerText = `🚌 **Transport Schedule (Bus Route 4)**\n\n- **Pickup Point:** Boring Road Crossing at 07:15 AM\n- **Afternoon Drop:** 02:45 PM\n- **Driver Contact:** Ramesh Kumar (+91 98765 43210)\n\n*Powered by SRM ECO TECH*`;
+        } else {
+          answerText = `Hello ${userName}! I am **${assistantPersonaName}**, your **${assistantRoleTitle}** for **Vidyalaya School Management System** (Powered by **SRM ECO TECH**).\n\nI can help you review your child's attendance record, upcoming term fee schedules & receipts, bus route timings, and school circulars. How can I assist you today?`;
+        }
+      } else if (role === 'TEACHER') {
+        if (q.includes('attendance') || q.includes('present') || q.includes('absent')) {
+          answerText = `📅 **Class 10-A Attendance Summary**\n\n- **Present:** 38 / 40 students (95%)\n- **Absent:** Rohan Verma (Roll 14), Kabir Singh (Roll 22)\n- **Quick Action:** Mark SMS notifications sent under **Attendance > Mark Attendance**.\n\n*Powered by SRM ECO TECH*`;
+        } else {
+          answerText = `Hello ${userName}! I am **${assistantPersonaName}**, your **${assistantRoleTitle}** for **Vidyalaya School Management System** (Powered by **SRM ECO TECH**).\n\nI can help you with your class attendance roster, syllabus progression, student homework assignments, and exam grading rubrics. What are we working on today?`;
+        }
+      } else if (role === 'STUDENT') {
+        if (q.includes('timetable') || q.includes('schedule') || q.includes('class')) {
+          answerText = `📚 **Today's Class Schedule (Class 10-A)**\n\n1. **Period 1 (08:30 AM):** Mathematics (Quadratic Equations)\n2. **Period 2 (09:30 AM):** Science (Chemical Reactions)\n3. **Period 3 (10:45 AM):** English (Literature Revision)\n4. **Period 4 (11:45 AM):** Social Science (History Chapter 3)\n\n*Remember to bring your Science lab records for Friday!*`;
+        } else {
+          answerText = `Hi ${userName}! I am your **${assistantPersonaName}** for **Vidyalaya School Management System** (Powered by **SRM ECO TECH**).\n\nI can help you check your timetable, pending homework assignments, exam datesheets, and study concepts. What would you like to review?`;
+        }
       } else {
-        answerText = `I am Adam, the dedicated AI assistant for Vidyalaya School Management System (Powered by SRM ECO TECH). I can only assist with this school portal within your authorized **${role}** permissions. How can I help you today?`;
+        // Admin Scope
+        if (q.includes('fee') || q.includes('due') || q.includes('payment')) {
+          answerText = `📊 **Institutional Fee Overview (Admin Scope)**\n\n- **Total Outstanding Dues:** ₹${schoolStats.totalDues.toLocaleString('en-IN')}\n- **Collection Rate:** ~82% this cycle\n- **High Priority Defaulters:** Class 10-A, 9-B, 8-A\n- **Action:** Automated fee reminder WhatsApp/SMS notices can be dispatched from the **Fees** module.\n\n*Powered by SRM ECO TECH*`;
+        } else if (q.includes('attendance') || q.includes('present') || q.includes('absent')) {
+          answerText = `📅 **Today's Institutional Attendance**\n\n- **Students Present:** ${schoolStats.presentToday} / ${schoolStats.totalStudents} (${Math.round((schoolStats.presentToday / schoolStats.totalStudents) * 100)}%)\n- **Faculty Present:** ${schoolStats.totalTeachers} / ${schoolStats.totalTeachers} (100%)\n- **Modes:** Biometric & Card/Barcode scanning active.\n\n*Powered by SRM ECO TECH*`;
+        } else {
+          answerText = `Welcome, ${userName}! I am **${assistantPersonaName}**, your **${assistantRoleTitle}** for **Vidyalaya School Management System** (Powered by **SRM ECO TECH**).\n\nI have full administrative oversight ready to assist you with student enrollment, institutional fee collection summaries, attendance analytics, and circular drafts. How can I help you lead today?`;
+        }
       }
       totalTokensUsed = Math.ceil((message.length + answerText.length) / 4);
     }
 
-    // 7. Record and enforce daily token limit
+    // 9. Post-processing: Rigorously cleanse any block characters or ASCII bars ("bullar")
+    answerText = answerText
+      .replace(/\[[█■▇▓▌▐░▒\s=-]+\]/g, '') // remove bracketed blocks like [██] or [====]
+      .replace(/[█■▇▓▌▐░▒]/g, '')           // remove any lone solid blocks
+      .replace(/[ \t]{2,}/g, ' ')           // clean up double spaces
+      .trim();
+
+    // 10. Record and enforce daily token limit
     tokenUsageStore[usageKey] = currentUsage + totalTokensUsed;
     const newTotalUsed = tokenUsageStore[usageKey];
     const tokensRemaining = Math.max(0, DAILY_TOKEN_LIMIT - newTotalUsed);
@@ -319,6 +421,7 @@ GENERAL OPERATIONAL RULES:
       dailyLimit: DAILY_TOKEN_LIMIT,
       model: successfulModel || 'fallback',
       role,
+      personaName: assistantPersonaName,
     });
   } catch (error: any) {
     console.error('AI Assistant API Exception:', error);

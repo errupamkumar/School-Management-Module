@@ -31,6 +31,12 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
     setTimeout(() => setCopiedCodeIdx(null), 2000);
   };
 
+  // Rigorously cleanse all solid ASCII block characters ("bullar") and bracketed bars
+  const cleanContent = (content || '')
+    .replace(/\[[█■▇▓▌▐░▒\s=-]+\]/g, '') // remove bracketed blocks like [██] or [====]
+    .replace(/[█■▇▓▌▐░▒]/g, '')           // remove any lone solid blocks
+    .replace(/[ \t]{2,}/g, ' ');         // clean double spaces
+
   // 1. Split content by code blocks: ```[lang]\n[code]\n```
   const codeBlockRegex = /```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g;
   const blocks: Array<{ type: 'code' | 'markdown'; lang?: string; text: string }> = [];
@@ -38,11 +44,11 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
   let lastIndex = 0;
   let match;
 
-  while ((match = codeBlockRegex.exec(content)) !== null) {
+  while ((match = codeBlockRegex.exec(cleanContent)) !== null) {
     if (match.index > lastIndex) {
       blocks.push({
         type: 'markdown',
-        text: content.substring(lastIndex, match.index),
+        text: cleanContent.substring(lastIndex, match.index),
       });
     }
 
@@ -55,10 +61,10 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
     lastIndex = match.index + match[0].length;
   }
 
-  if (lastIndex < content.length) {
+  if (lastIndex < cleanContent.length) {
     blocks.push({
       type: 'markdown',
-      text: content.substring(lastIndex),
+      text: cleanContent.substring(lastIndex),
     });
   }
 
@@ -66,7 +72,7 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
     <div className={cn('space-y-2.5 text-xs sm:text-sm leading-relaxed text-gray-800 dark:text-gray-200', className)}>
       {blocks.map((block, bIdx) => {
         if (block.type === 'code') {
-          // Check if this code block is actually a text bar chart (e.g. [████...] or percentages)
+          // Check if this code block is a visual metric distribution
           const chart = parseVisualChart(block.text);
           if (chart.isChart) {
             return renderVisualChartCard(chart, bIdx);
@@ -119,30 +125,34 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
   );
 }
 
-// Smart Parser to convert [████...] text bar charts into visual UI chart components
+// Smart Parser to convert metric distributions into visual UI chart components
 function parseVisualChart(text: string): { isChart: boolean; title: string; items: ChartItem[] } {
   const lines = text.split('\n');
   const items: ChartItem[] = [];
   let title = '';
 
   for (const line of lines) {
-    const trimmed = line.trim();
+    const trimmed = line
+      .replace(/\[[█■▇▓▌▐░▒\s=-]+\]/g, '')
+      .replace(/[█■▇▓▌▐░▒]/g, '')
+      .trim();
     if (!trimmed) continue;
 
-    // Detect line pattern: "Label [█████...] 45% (450 Students)" or "Label [====] 93.1%"
-    const match = trimmed.match(/^(.*?)\s*\[[█=\-#\s]+\]\s*(.*)$/);
-    if (match) {
-      const label = match[1].replace(/[:\-]$/, '').trim();
-      const valStr = match[2].trim();
-      const pctMatch = valStr.match(/(\d+(\.\d+)?)%/);
-      const percent = pctMatch ? parseFloat(pctMatch[1]) : 50;
-      items.push({ label, value: valStr, percent });
+    const pctMatch = trimmed.match(/(\d+(\.\d+)?)%/);
+    if (pctMatch && (trimmed.includes(':') || trimmed.includes('-') || trimmed.includes('•') || trimmed.includes('~'))) {
+      const parts = trimmed.split(/[:\-•~]/);
+      const label = parts[0].trim();
+      const valStr = parts.slice(1).join(' ').trim();
+      const percent = parseFloat(pctMatch[1]);
+      if (label && percent > 0) {
+        items.push({ label, value: valStr || `${percent}%`, percent });
+      }
     } else if (items.length === 0 && !title) {
       title = trimmed.replace(/[:\-]$/, '');
     }
   }
 
-  return { isChart: items.length > 0, title, items };
+  return { isChart: items.length >= 2, title, items };
 }
 
 // Gorgeous Visual Progress Bar Chart Component
@@ -208,7 +218,6 @@ function renderMarkdownLines(rawText: string) {
   const lines = rawText.split('\n');
   const elements: React.ReactNode[] = [];
   let tableRows: string[] = [];
-  let chartLines: string[] = [];
 
   const flushTable = () => {
     if (tableRows.length > 0) {
@@ -217,28 +226,13 @@ function renderMarkdownLines(rawText: string) {
     }
   };
 
-  const flushChart = () => {
-    if (chartLines.length > 0) {
-      const chart = parseVisualChart(chartLines.join('\n'));
-      if (chart.isChart) {
-        elements.push(renderVisualChartCard(chart, elements.length));
-      }
-      chartLines = [];
-    }
-  };
-
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const rawLine = lines[i];
+    const line = rawLine
+      .replace(/\[[█■▇▓▌▐░▒\s=-]+\]/g, '')
+      .replace(/[█■▇▓▌▐░▒]/g, '')
+      .replace(/[ \t]{2,}/g, ' ');
     const trimmed = line.trim();
-
-    // Check for inline bar chart lines: [████...]
-    if (/\[[█=\-#\s]{3,}\]/.test(trimmed)) {
-      flushTable();
-      chartLines.push(trimmed);
-      continue;
-    } else if (chartLines.length > 0) {
-      flushChart();
-    }
 
     // Check for table lines
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
@@ -363,7 +357,6 @@ function renderMarkdownLines(rawText: string) {
   }
 
   flushTable();
-  flushChart();
   return elements;
 }
 
