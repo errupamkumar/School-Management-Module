@@ -8,11 +8,18 @@ const siteUrl =
     ? `https://${process.env.VERCEL_URL}`
     : 'http://localhost:3000';
 
+const authSecret =
+  process.env.NEXTAUTH_SECRET && process.env.NEXTAUTH_SECRET.trim() !== ''
+    ? process.env.NEXTAUTH_SECRET
+    : 'vidyalaya-sms-super-secret-jwt-token-key-2026-prod';
+
 process.env.NEXTAUTH_URL = siteUrl;
+process.env.NEXTAUTH_SECRET = authSecret;
 
 const nextConfig = {
   env: {
     NEXTAUTH_URL: siteUrl,
+    NEXTAUTH_SECRET: authSecret,
   },
   images: {
     domains: ['localhost', 'utfs.io'],

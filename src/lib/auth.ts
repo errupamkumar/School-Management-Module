@@ -65,5 +65,5 @@ export const authOptions: NextAuthOptions = {
     error: '/login',
   },
   session: { strategy: 'jwt', maxAge: 24 * 60 * 60 }, // 24 hours
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || 'vidyalaya-sms-super-secret-jwt-token-key-2026-prod',
 };

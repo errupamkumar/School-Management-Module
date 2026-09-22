@@ -38,6 +38,7 @@ export default withAuth(
     callbacks: {
       authorized: ({ token }) => !!token,
     },
+    secret: process.env.NEXTAUTH_SECRET || 'vidyalaya-sms-super-secret-jwt-token-key-2026-prod',
   }
 );
 
