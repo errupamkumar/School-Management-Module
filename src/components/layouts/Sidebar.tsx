@@ -6,12 +6,13 @@ import { signOut, useSession } from 'next-auth/react';
 import { getMenuForRole } from '@/lib/navigation';
 import { cn } from '@/utils/helpers';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { useSidebar } from '@/components/providers/SidebarProvider';
 import * as Icons from 'lucide-react';
 
 export default function Sidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const { isMobileOpen, setIsMobileOpen, isCollapsed, toggleCollapsed } = useSidebar();
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const { lang } = useLanguage();
 
@@ -19,7 +20,9 @@ export default function Sidebar() {
   const menuItems = getMenuForRole(role);
 
   const toggleMenu = (title: string) => {
-    setOpenMenus((prev) => prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title]);
+    setOpenMenus((prev) =>
+      prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title]
+    );
   };
 
   const getIcon = (iconName: string) => {
@@ -27,26 +30,60 @@ export default function Sidebar() {
     return Icon ? <Icon size={20} /> : <Icons.Circle size={20} />;
   };
 
+  const handleLinkClick = () => {
+    if (isMobileOpen) {
+      setIsMobileOpen(false);
+    }
+  };
+
   return (
-    <aside className={cn('fixed left-0 top-0 h-screen bg-sidebar-bg text-white z-40 flex flex-col transition-all duration-300', collapsed ? 'w-[68px]' : 'w-64')}>
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-white/10">
-        <div className="w-9 h-9 bg-primary-500 rounded-xl flex items-center justify-center flex-shrink-0">
+    <aside
+      aria-label="Main sidebar navigation"
+      className={cn(
+        'fixed left-0 top-0 h-screen h-[100dvh] bg-sidebar-bg text-white z-50 flex flex-col transition-all duration-300 ease-in-out',
+        // Mobile drawer positioning & transitions
+        isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0',
+        // Desktop widths vs Mobile widths
+        'w-72 sm:w-80',
+        isCollapsed ? 'lg:w-[68px]' : 'lg:w-64'
+      )}
+    >
+      {/* Sidebar Header / Logo */}
+      <div className="flex items-center gap-3 px-4 py-4 sm:py-5 border-b border-white/10 flex-shrink-0">
+        <div className="w-9 h-9 bg-primary-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
           <Icons.GraduationCap size={20} className="text-white" />
         </div>
-        {!collapsed && (
-          <div className="overflow-hidden">
-            <h1 className="text-lg font-bold tracking-tight">विद्यालय</h1>
-            <p className="text-[10px] text-sidebar-text -mt-0.5">School Management</p>
-          </div>
-        )}
-        <button onClick={() => setCollapsed(!collapsed)} className="ml-auto p-1 hover:bg-sidebar-hover rounded-lg transition-colors">
-          {collapsed ? <Icons.ChevronRight size={16} /> : <Icons.ChevronLeft size={16} />}
+
+        {/* Text Title (Shown on mobile or when desktop is expanded) */}
+        <div className={cn('overflow-hidden flex-1', isCollapsed && 'lg:hidden')}>
+          <h1 className="text-lg font-bold tracking-tight text-white leading-tight">विद्यालय</h1>
+          <p className="text-[10px] text-sidebar-text -mt-0.5">School Management</p>
+        </div>
+
+        {/* Desktop Collapse / Expand Toggle */}
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          className="hidden lg:flex p-1.5 hover:bg-sidebar-hover rounded-lg transition-colors text-sidebar-text hover:text-white ml-auto"
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {isCollapsed ? <Icons.ChevronRight size={16} /> : <Icons.ChevronLeft size={16} />}
+        </button>
+
+        {/* Mobile Close Button */}
+        <button
+          type="button"
+          onClick={() => setIsMobileOpen(false)}
+          className="lg:hidden p-1.5 hover:bg-sidebar-hover rounded-lg transition-colors text-sidebar-text hover:text-white ml-auto focus:outline-none focus:ring-2 focus:ring-white/20"
+          aria-label="Close navigation menu"
+        >
+          <Icons.X size={20} />
         </button>
       </div>
 
-      {/* Menu */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+      {/* Navigation Menu */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5 touch-scroll">
         {menuItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           const isOpen = openMenus.includes(item.title);
@@ -55,31 +92,68 @@ export default function Sidebar() {
           return (
             <div key={item.title + item.href}>
               {hasChildren ? (
-                <button onClick={() => toggleMenu(item.title)} className={cn('sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm', isActive ? 'bg-sidebar-active text-white' : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white')}>
-                  {getIcon(item.icon)}
-                  {!collapsed && (
-                    <>
-                      <span className="flex-1 text-left">{lang === 'hi' ? item.titleHi : item.title}</span>
-                      <Icons.ChevronDown size={14} className={cn('transition-transform', isOpen && 'rotate-180')} />
-                    </>
+                <button
+                  type="button"
+                  onClick={() => toggleMenu(item.title)}
+                  className={cn(
+                    'sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+                    isActive
+                      ? 'bg-sidebar-active text-white'
+                      : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white'
                   )}
+                  aria-expanded={isOpen}
+                >
+                  <span className="flex-shrink-0">{getIcon(item.icon)}</span>
+                  <div className={cn('flex items-center justify-between flex-1 min-w-0', isCollapsed && 'lg:hidden')}>
+                    <span className="text-left truncate">{lang === 'hi' ? item.titleHi : item.title}</span>
+                    <Icons.ChevronDown
+                      size={14}
+                      className={cn('transition-transform flex-shrink-0 ml-1', isOpen && 'rotate-180')}
+                    />
+                  </div>
                 </button>
               ) : (
-                <Link href={item.href} className={cn('sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm', isActive ? 'bg-primary-600/90 text-white shadow-lg shadow-primary-600/20' : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white')}>
-                  {getIcon(item.icon)}
-                  {!collapsed && <span>{lang === 'hi' ? item.titleHi : item.title}</span>}
+                <Link
+                  href={item.href}
+                  onClick={handleLinkClick}
+                  className={cn(
+                    'sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+                    isActive
+                      ? 'bg-primary-600/90 text-white shadow-lg shadow-primary-600/20 font-semibold'
+                      : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white'
+                  )}
+                >
+                  <span className="flex-shrink-0">{getIcon(item.icon)}</span>
+                  <span className={cn('truncate', isCollapsed && 'lg:hidden')}>
+                    {lang === 'hi' ? item.titleHi : item.title}
+                  </span>
                 </Link>
               )}
 
               {/* Submenu */}
-              {hasChildren && isOpen && !collapsed && (
-                <div className="ml-4 mt-0.5 space-y-0.5 border-l border-white/10 pl-3">
+              {hasChildren && isOpen && (
+                <div
+                  className={cn(
+                    'mt-0.5 space-y-0.5 border-l border-white/10 pl-3',
+                    isCollapsed ? 'ml-2 lg:hidden' : 'ml-4'
+                  )}
+                >
                   {item.children!.map((child) => {
                     const childActive = pathname === child.href;
                     return (
-                      <Link key={child.href} href={child.href} className={cn('sidebar-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs', childActive ? 'bg-sidebar-active text-white' : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white')}>
-                        {getIcon(child.icon)}
-                        <span>{lang === 'hi' ? child.titleHi : child.title}</span>
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        onClick={handleLinkClick}
+                        className={cn(
+                          'sidebar-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors',
+                          childActive
+                            ? 'bg-sidebar-active text-white font-semibold'
+                            : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white'
+                        )}
+                      >
+                        <span className="flex-shrink-0">{getIcon(child.icon)}</span>
+                        <span className="truncate">{lang === 'hi' ? child.titleHi : child.title}</span>
                       </Link>
                     );
                   })}
@@ -91,10 +165,16 @@ export default function Sidebar() {
       </nav>
 
       {/* User / Logout */}
-      <div className="border-t border-white/10 p-3">
-        <button onClick={() => signOut({ callbackUrl: '/login' })} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors">
-          <Icons.LogOut size={20} />
-          {!collapsed && <span>{lang === 'hi' ? 'लॉग आउट' : 'Logout'}</span>}
+      <div className="border-t border-white/10 p-3 flex-shrink-0 bg-sidebar-bg">
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors focus:outline-none focus:ring-2 focus:ring-red-400/20"
+        >
+          <span className="flex-shrink-0"><Icons.LogOut size={20} /></span>
+          <span className={cn('truncate', isCollapsed && 'lg:hidden')}>
+            {lang === 'hi' ? 'लॉग आउट' : 'Logout'}
+          </span>
         </button>
       </div>
     </aside>

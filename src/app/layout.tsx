@@ -4,9 +4,34 @@ import AuthProvider from '@/components/providers/AuthProvider';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { LanguageProvider } from '@/components/providers/LanguageProvider';
 
-export const metadata = {
+import type { Metadata, Viewport } from 'next';
+
+export const metadata: Metadata = {
   title: 'Vidyalaya - School Management System',
   description: 'Complete School Management System for Indian Schools',
+  applicationName: 'Vidyalaya',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Vidyalaya',
+  },
+  formatDetection: {
+    telephone: true,
+    date: true,
+    address: true,
+    email: true,
+  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#020617' },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

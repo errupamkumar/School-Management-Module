@@ -19,6 +19,7 @@ import {
   Sparkles,
   Shield,
   BookOpen,
+  ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import toast from 'react-hot-toast';
@@ -175,6 +176,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Record<string, Message[]>>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
 
   const activeChannel = channels.find((c) => c.id === activeChannelId) || channels[0];
   const activeMessages = messages[activeChannelId] || [];
@@ -221,11 +223,16 @@ export default function ChatPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto pb-10">
+      <div className="max-w-6xl mx-auto pb-6 sm:pb-10">
         {/* Main Card */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col md:flex-row h-[78vh] min-h-[550px]">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col md:flex-row h-[82vh] md:h-[78vh] min-h-[500px]">
           {/* Left Sidebar: Conversations list */}
-          <div className="w-full md:w-80 lg:w-96 border-r border-gray-100 dark:border-slate-800 flex flex-col h-full bg-gray-50/50 dark:bg-slate-900/50">
+          <div
+            className={cn(
+              'w-full md:w-80 lg:w-96 border-r border-gray-100 dark:border-slate-800 flex-col h-full bg-gray-50/50 dark:bg-slate-900/50',
+              mobileView === 'chat' ? 'hidden md:flex' : 'flex'
+            )}
+          >
             {/* Search Header */}
             <div className="p-4 border-b border-gray-100 dark:border-slate-800">
               <div className="flex items-center justify-between mb-3">
@@ -255,13 +262,16 @@ export default function ChatPage() {
             </div>
 
             {/* Channels List */}
-            <div className="flex-1 overflow-y-auto divide-y divide-gray-100/60 dark:divide-slate-800/60">
+            <div className="flex-1 overflow-y-auto touch-scroll divide-y divide-gray-100/60 dark:divide-slate-800/60">
               {filteredChannels.map((channel) => {
                 const isActive = channel.id === activeChannelId;
                 return (
                   <button
                     key={channel.id}
-                    onClick={() => setActiveChannelId(channel.id)}
+                    onClick={() => {
+                      setActiveChannelId(channel.id);
+                      setMobileView('chat');
+                    }}
                     className={cn(
                       'w-full text-left p-3.5 flex items-start gap-3 transition-colors',
                       isActive
@@ -305,20 +315,35 @@ export default function ChatPage() {
           </div>
 
           {/* Right Pane: Active Chat Window */}
-          <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-900">
+          <div
+            className={cn(
+              'flex-1 flex-col h-full bg-white dark:bg-slate-900',
+              mobileView === 'list' ? 'hidden md:flex' : 'flex'
+            )}
+          >
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-950 flex items-center justify-center text-xl">
+            <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                {/* Mobile Back Button */}
+                <button
+                  type="button"
+                  onClick={() => setMobileView('list')}
+                  className="md:hidden p-1.5 -ml-1 text-gray-500 hover:text-purple-600 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex-shrink-0"
+                  aria-label="Back to conversations list"
+                >
+                  <ArrowLeft size={18} />
+                </button>
+
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-purple-50 dark:bg-purple-950 flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
                   {activeChannel.avatar}
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                <div className="min-w-0">
+                  <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
                     {lang === 'hi' ? activeChannel.nameHi : activeChannel.name}
                   </h3>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                    {activeChannel.online && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                    <span>{lang === 'hi' ? activeChannel.roleHi : activeChannel.role}</span>
+                  <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5 truncate">
+                    {activeChannel.online && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />}
+                    <span className="truncate">{lang === 'hi' ? activeChannel.roleHi : activeChannel.role}</span>
                   </p>
                 </div>
               </div>

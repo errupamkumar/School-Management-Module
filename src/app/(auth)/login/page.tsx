@@ -97,60 +97,61 @@ export default function LoginPage() {
       </div>
 
       {/* Right side - Login Form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-gray-50">
+      <div className="flex-1 flex items-center justify-center px-3.5 py-6 sm:px-6 sm:py-12 bg-gray-50 dark:bg-slate-950">
         <div className="w-full max-w-md">
-          <div className="lg:hidden text-center mb-8">
+          <div className="lg:hidden text-center mb-6 sm:mb-8">
             <h1 className="text-3xl font-bold text-primary-700">विद्यालय</h1>
-            <p className="text-gray-500 mt-1">School Management System</p>
+            <p className="text-gray-500 mt-1 text-sm">School Management System</p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome Back</h2>
-            <p className="text-gray-500 mb-8">Sign in to your account to continue</p>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-slate-800 p-5 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">Welcome Back</h2>
+            <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mb-6 sm:mb-8">Sign in to your account to continue</p>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               <div>
-                <label className="form-label">Email Address</label>
+                <label className="form-label text-xs sm:text-sm">Email Address</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="form-input"
+                  className="form-input py-2.5 text-sm"
                   placeholder="admin@vidyalaya.com"
                   required
                 />
               </div>
 
               <div>
-                <label className="form-label">Password</label>
+                <label className="form-label text-xs sm:text-sm">Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="form-input pr-10"
+                    className="form-input py-2.5 pr-10 text-sm"
                     placeholder="••••••••"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
                   >
                     {showPassword ? '🙈' : '👁️'}
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm">
+              <div className="flex items-center justify-between text-xs sm:text-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                  <span className="text-gray-600">Remember me</span>
+                  <span className="text-gray-600 dark:text-gray-300">Remember me</span>
                 </label>
-                <a href="#" className="text-sm text-primary-600 hover:text-primary-700 font-medium">Forgot password?</a>
+                <a href="#" className="text-primary-600 hover:text-primary-700 font-medium">Forgot password?</a>
               </div>
 
-              <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
+              <button type="submit" disabled={loading} className="btn-primary w-full py-2.5 text-sm font-semibold">
                 {loading && !loadingRole ? (
                   <span className="flex items-center justify-center gap-2">
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -166,21 +167,21 @@ export default function LoginPage() {
             </form>
 
             {/* 1-Click Instant Login Grid */}
-            <div className="mt-6 p-4 bg-blue-50/80 border border-blue-200/80 rounded-xl">
+            <div className="mt-6 p-3.5 sm:p-4 bg-blue-50/80 dark:bg-slate-800/60 border border-blue-200/80 dark:border-slate-700 rounded-xl">
               <div className="flex items-center justify-between mb-2.5">
-                <p className="text-xs font-bold text-blue-950 uppercase tracking-wide">
+                <p className="text-xs font-bold text-blue-950 dark:text-blue-200 uppercase tracking-wide">
                   ⚡ 1-Click Instant Demo Login:
                 </p>
                 <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-semibold">
                   Instant
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   disabled={loading}
                   onClick={() => handleDemoLogin('admin@vidyalaya.com', 'admin123', 'admin')}
-                  className="text-left p-2.5 rounded-lg bg-white border border-blue-200 hover:border-blue-500 hover:bg-blue-50/80 transition-all text-xs shadow-sm hover:shadow disabled:opacity-50 group"
+                  className="text-left p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-blue-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/80 dark:hover:bg-slate-700/80 transition-all text-xs shadow-sm hover:shadow disabled:opacity-50 group"
                 >
                   <div className="font-semibold text-gray-900 group-hover:text-blue-700 flex items-center justify-between">
                     <span>👑 Admin</span>
