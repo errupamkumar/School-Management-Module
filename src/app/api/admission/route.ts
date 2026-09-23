@@ -106,6 +106,7 @@ export async function POST(req: NextRequest) {
         classId: body.classId,
         sectionId: body.sectionId,
         rollNo: body.rollNo,
+        academicYear: body.academicYear || '2025-26',
       });
       return NextResponse.json(res, { status: res.success ? 201 : 400 });
     }

@@ -115,6 +115,7 @@ model Campus {
   classes         Class[]
   sections        Section[]
   feeStructures   FeeStructure[]
+  feeGroups       FeeGroup[]
   expenses        Expense[]
   incomes         Income[]
   transports      TransportRoute[]
@@ -160,6 +161,7 @@ model Student {
   previousSchool    String?
   tcNumber          String?
   admissionDate     DateTime    @default(now())
+  session           String?     @default("2025-26")
   isActive          Boolean     @default(true)
 
   // Relations
@@ -187,6 +189,8 @@ model Student {
   leaveRequests     LeaveRequest[]
   documents         StudentDocument[]
   promotions        StudentPromotion[]
+  classEnrollments  StudentClassEnrollment[]
+  feeOverrides      StudentFeeOverride[]
 
   // Admission linkage
   admissionInquiryId String?           @unique
@@ -360,6 +364,8 @@ model Class {
   homeworks    Homework[]
   admissionInquiries AdmissionInquiry[]
   classCapacities    ClassCapacity[]
+  studentEnrollments StudentClassEnrollment[]
+  examClasses        ExamClass[]
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -524,7 +530,10 @@ model FeeStructure {
   campusId      String
   campus        Campus   @relation(fields: [campusId], references: [id])
 
+  feeGroupId    String?
+  feeGroup      FeeGroup? @relation(fields: [feeGroupId], references: [id])
   feePayments   FeePayment[]
+  overrides     StudentFeeOverride[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -666,6 +675,7 @@ model Exam {
 
   subjects      ExamSubject[]
   results       ExamResult[]
+  classes       ExamClass[]
 
   createdAt     DateTime  @default(now())
 
@@ -1081,5 +1091,72 @@ model ClassCapacity {
   @@unique([classId, sectionId, academicYear])
   @@index([classId])
   @@index([sectionId])
+}
+
+// ==================== SA-06: MULTI-CLASS STUDENT ENROLLMENT ====================
+
+model StudentClassEnrollment {
+  id           String   @id @default(cuid())
+  studentId    String
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classId      String
+  class        Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  sectionId    String?
+  academicYear String   @default("2025-26")
+  isPrimary    Boolean  @default(false)
+  assignedAt   DateTime @default(now())
+
+  @@unique([studentId, classId, academicYear])
+  @@index([studentId])
+  @@index([classId])
+}
+
+// ==================== SA-08: FEE GROUPS & STUDENT OVERRIDES ====================
+
+model FeeGroup {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  academicYear String   @default("2025-26")
+  campusId     String
+  campus       Campus   @relation(fields: [campusId], references: [id])
+  feeStructures FeeStructure[]
+  studentOverrides StudentFeeOverride[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([campusId, academicYear])
+}
+
+model StudentFeeOverride {
+  id             String        @id @default(cuid())
+  studentId      String
+  student        Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeGroupId     String?
+  feeGroup       FeeGroup?     @relation(fields: [feeGroupId], references: [id], onDelete: Cascade)
+  feeStructureId String?
+  feeStructure   FeeStructure? @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  overrideAmount Float?
+  discount       Float         @default(0)
+  reason         String?
+  academicYear   String        @default("2025-26")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([studentId, academicYear])
+}
+
+// ==================== SA-09: EXAM TO MULTI-CLASS MAPPING ====================
+
+model ExamClass {
+  id        String   @id @default(cuid())
+  examId    String
+  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([examId, classId])
+  @@index([classId])
 }
 

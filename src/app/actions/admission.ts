@@ -300,6 +300,7 @@ export async function updateInquiryStatus(
   try {
     const inquiry = await prisma.admissionInquiry.findUnique({
       where: { id: inquiryId },
+      include: { student: true },
     });
 
     if (!inquiry) throw new Error('Inquiry record not found');

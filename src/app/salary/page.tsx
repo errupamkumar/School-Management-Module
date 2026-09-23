@@ -1,5 +1,7 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
+import DashboardLayout from '@/components/layouts/DashboardLayout';
 import {
   Wallet, CheckCircle2, Clock, AlertCircle, Printer, Download,
   Search, Filter, Plus, FileText, UserCheck, Calendar, DollarSign,
@@ -79,8 +81,34 @@ export default function SalaryPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Hero Header */}
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Sub-Navigation for Accounting Module (SA-01) */}
+        <div className="flex items-center gap-2 border-b border-gray-200 dark:border-slate-800 pb-3 overflow-x-auto">
+          <Link
+            href="/accounting"
+            className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-2 flex-shrink-0"
+          >
+            <Building2 size={14} />
+            <span>Overview & Ledger</span>
+          </Link>
+          <Link
+            href="/accounting/expenses"
+            className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-2 flex-shrink-0"
+          >
+            <DollarSign size={14} />
+            <span>Expense Manager</span>
+          </Link>
+          <Link
+            href="/salary"
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 text-white shadow-sm flex items-center gap-2 flex-shrink-0"
+          >
+            <Wallet size={14} />
+            <span>Staff Salary</span>
+          </Link>
+        </div>
+
+        {/* Hero Header */}
       <div className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -364,6 +392,7 @@ export default function SalaryPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

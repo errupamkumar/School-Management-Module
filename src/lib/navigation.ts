@@ -50,9 +50,15 @@ export const sidebarItems: SidebarItem[] = [
       { title: 'Due List', titleHi: 'बकाया सूची', href: '/fees/dues', icon: 'AlertTriangle', roles: [Role.SUPER_ADMIN, Role.ADMIN, Role.ACCOUNTANT] },
     ],
   },
-  { title: 'Accounting', titleHi: 'लेखांकन', href: '/accounting', icon: 'Calculator', roles: [Role.SUPER_ADMIN, Role.ADMIN, Role.ACCOUNTANT] },
-  { title: 'Expense Management', titleHi: 'व्यय प्रबंधन', href: '/accounting/expenses', icon: 'TrendingDown', roles: [Role.SUPER_ADMIN, Role.ADMIN] },
-  { title: 'Staff Salary', titleHi: 'वेतन प्रबंधन', href: '/salary', icon: 'Wallet', roles: [Role.SUPER_ADMIN, Role.ADMIN] },
+  {
+    title: 'Accounting', titleHi: 'लेखांकन', href: '/accounting', icon: 'Calculator',
+    roles: [Role.SUPER_ADMIN, Role.ADMIN, Role.ACCOUNTANT],
+    children: [
+      { title: 'Overview & Ledger', titleHi: 'अवलोकन एवं खाता', href: '/accounting', icon: 'Calculator', roles: [Role.SUPER_ADMIN, Role.ADMIN, Role.ACCOUNTANT] },
+      { title: 'Expense Manager', titleHi: 'व्यय प्रबंधन', href: '/accounting/expenses', icon: 'TrendingDown', roles: [Role.SUPER_ADMIN, Role.ADMIN, Role.ACCOUNTANT] },
+      { title: 'Staff Salary', titleHi: 'वेतन प्रबंधन', href: '/salary', icon: 'Wallet', roles: [Role.SUPER_ADMIN, Role.ADMIN, Role.ACCOUNTANT] },
+    ],
+  },
   {
     title: 'Exam Management', titleHi: 'परीक्षा प्रबंधन', href: '/exams', icon: 'FileText',
     roles: [Role.SUPER_ADMIN, Role.ADMIN, Role.TEACHER],

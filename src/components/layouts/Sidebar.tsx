@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
@@ -12,18 +12,25 @@ import * as Icons from 'lucide-react';
 export default function Sidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
-  const { isMobileOpen, setIsMobileOpen, isCollapsed, toggleCollapsed } = useSidebar();
-  const [openMenus, setOpenMenus] = useState<string[]>([]);
+  const { isMobileOpen, setIsMobileOpen, isCollapsed, toggleCollapsed, openMenus, setOpenMenus, toggleMenu } = useSidebar();
   const { lang } = useLanguage();
 
   const role = (session?.user as any)?.role || 'ADMIN';
   const menuItems = getMenuForRole(role);
 
-  const toggleMenu = (title: string) => {
-    setOpenMenus((prev) =>
-      prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title]
-    );
-  };
+  // Automatically keep parent menus expanded when active route is within them
+  useEffect(() => {
+    menuItems.forEach((item) => {
+      if (item.children && item.children.length > 0) {
+        const matchesChild = item.children.some(
+          (child) => pathname === child.href || pathname.startsWith(child.href + '/')
+        );
+        if (matchesChild && !openMenus.includes(item.title)) {
+          setOpenMenus((prev) => (prev.includes(item.title) ? prev : [...prev, item.title]));
+        }
+      }
+    });
+  }, [pathname, menuItems, openMenus, setOpenMenus]);
 
   const getIcon = (iconName: string) => {
     const Icon = (Icons as any)[iconName];

@@ -10,6 +10,9 @@ interface SidebarContextType {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   toggleCollapsed: () => void;
+  openMenus: string[];
+  setOpenMenus: React.Dispatch<React.SetStateAction<string[]>>;
+  toggleMenu: (title: string) => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -17,7 +20,38 @@ const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [openMenus, setOpenMenus] = useState<string[]>([]);
   const pathname = usePathname();
+
+  // Load persisted desktop collapsed state and open menus if available
+  useEffect(() => {
+    try {
+      const savedCollapsed = localStorage.getItem('vidyalaya-sidebar-collapsed');
+      if (savedCollapsed !== null) {
+        setIsCollapsed(savedCollapsed === 'true');
+      }
+
+      const savedOpenMenus = localStorage.getItem('vidyalaya-sidebar-open-menus');
+      if (savedOpenMenus) {
+        const parsed = JSON.parse(savedOpenMenus);
+        if (Array.isArray(parsed)) {
+          setOpenMenus(parsed);
+        }
+      }
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }, []);
+
+  const toggleMenu = (title: string) => {
+    setOpenMenus((prev) => {
+      const next = prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title];
+      try {
+        localStorage.setItem('vidyalaya-sidebar-open-menus', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
 
   // Close mobile drawer automatically when route changes
   useEffect(() => {
@@ -49,18 +83,6 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isMobileOpen]);
 
-  // Load persisted desktop collapsed state if available
-  useEffect(() => {
-    try {
-      const savedCollapsed = localStorage.getItem('vidyalaya-sidebar-collapsed');
-      if (savedCollapsed !== null) {
-        setIsCollapsed(savedCollapsed === 'true');
-      }
-    } catch (e) {
-      // Ignore storage errors
-    }
-  }, []);
-
   const toggleMobile = () => setIsMobileOpen((prev) => !prev);
 
   const toggleCollapsed = () => {
@@ -82,6 +104,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         isCollapsed,
         setIsCollapsed,
         toggleCollapsed,
+        openMenus,
+        setOpenMenus,
+        toggleMenu,
       }}
     >
       {children}

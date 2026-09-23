@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import AuthProvider from '@/components/providers/AuthProvider';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { LanguageProvider } from '@/components/providers/LanguageProvider';
+import { CampusProvider } from '@/components/providers/CampusProvider';
 
 import type { Metadata, Viewport } from 'next';
 
@@ -67,8 +68,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <LanguageProvider>
             <ThemeProvider>
-              {children}
-              <Toaster position="top-right" toastOptions={{ duration: 3000, style: { fontSize: '14px' } }} />
+              <CampusProvider>
+                {children}
+                <Toaster position="top-right" toastOptions={{ duration: 3000, style: { fontSize: '14px' } }} />
+              </CampusProvider>
             </ThemeProvider>
           </LanguageProvider>
         </AuthProvider>

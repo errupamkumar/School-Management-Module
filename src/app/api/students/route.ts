@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
     const classId = searchParams.get('classId');
     const sectionId = searchParams.get('sectionId');
     const campusId = searchParams.get('campusId');
+    const session = searchParams.get('session');
     const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '20');
@@ -16,7 +17,8 @@ export async function GET(req: NextRequest) {
     const where: any = { isActive: true };
     if (classId) where.classId = classId;
     if (sectionId) where.sectionId = sectionId;
-    if (campusId) where.campusId = campusId;
+    if (campusId && campusId !== 'ALL') where.campusId = campusId;
+    if (session && session !== 'ALL') where.session = session;
     if (search) {
       where.OR = [
         { firstName: { contains: search, mode: 'insensitive' } },
@@ -33,6 +35,9 @@ export async function GET(req: NextRequest) {
           section: true,
           parent: true,
           user: { select: { email: true, phone: true } },
+          classEnrollments: {
+            include: { class: true },
+          },
         },
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -177,6 +182,8 @@ export async function POST(req: NextRequest) {
           pincode: body.pincode || null,
           previousSchool: body.previousSchool || null,
           tcNumber: body.tcNumber || null,
+          admissionDate: body.admissionDate ? new Date(body.admissionDate) : new Date(),
+          session: body.session || '2025-26',
           userId: studentUser.id,
           campusId: campusId!,
           classId: classId!,

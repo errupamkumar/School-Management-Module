@@ -24,6 +24,7 @@ import {
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { useLanguage } from '@/components/providers/LanguageProvider';
 import { useSidebar } from '@/components/providers/SidebarProvider';
+import { useCampus } from '@/components/providers/CampusProvider';
 import { cn } from '@/utils/helpers';
 
 export default function Header() {
@@ -31,6 +32,7 @@ export default function Header() {
   const { isDark, toggleTheme } = useTheme();
   const { lang, toggleLang, t } = useLanguage();
   const { toggleMobile } = useSidebar();
+  const { campuses, selectedCampusId, selectedCampus, setSelectedCampusId, isAllCampuses } = useCampus();
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfile, setShowProfile] = useState(false);
   const [showCampusSelect, setShowCampusSelect] = useState(false);
@@ -140,36 +142,74 @@ export default function Header() {
           <div className="relative hidden md:block">
             <button
               onClick={() => setShowCampusSelect(!showCampusSelect)}
-              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-100/80 dark:border-purple-800/50 rounded-xl hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-colors"
+              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-100/80 dark:border-purple-800/50 rounded-xl hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-colors shadow-sm"
               aria-label="Select Campus"
             >
               <div className="w-5 h-5 rounded-md bg-purple-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                 <Building2 size={12} />
               </div>
-              <span className="text-xs font-semibold text-purple-900 dark:text-purple-200 hidden md:inline truncate max-w-[120px] lg:max-w-none">
-                {user?.campusName || (lang === 'hi' ? 'मुख्य विद्यालय परिसर' : 'Vidyalaya Campus')}
+              <span className="text-xs font-semibold text-purple-900 dark:text-purple-200 hidden md:inline truncate max-w-[140px] lg:max-w-none">
+                {selectedCampus?.name || (isAllCampuses ? (lang === 'hi' ? 'सभी परिसर (समग्र)' : 'All Campuses') : (user?.campusName || 'Vidyalaya Campus'))}
               </span>
-              <ChevronDown size={13} className="text-purple-600 dark:text-purple-400 flex-shrink-0" />
+              <ChevronDown size={13} className={cn('text-purple-600 dark:text-purple-400 flex-shrink-0 transition-transform', showCampusSelect && 'rotate-180')} />
             </button>
 
             {showCampusSelect && (
-              <div className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-gray-100 dark:border-slate-800 py-1.5 z-50 animate-in fade-in slide-in-from-top-1">
-                <div className="px-3 py-1.5 border-b border-gray-100 dark:border-slate-800">
-                  <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('selectInstitute', 'Select Institute')}</p>
+              <div className="absolute right-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 py-1.5 z-50 animate-in fade-in slide-in-from-top-1">
+                <div className="px-3.5 py-2 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+                  <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{t('selectInstitute', 'Select Campus')}</p>
+                  <span className="text-[10px] font-medium text-purple-600 bg-purple-50 dark:bg-purple-950 px-2 py-0.5 rounded-full">{campuses.length} Campuses</span>
                 </div>
+
+                {/* All Campuses option */}
                 <button
-                  onClick={() => setShowCampusSelect(false)}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 flex items-center justify-between"
+                  type="button"
+                  onClick={() => {
+                    setSelectedCampusId('ALL');
+                    setShowCampusSelect(false);
+                  }}
+                  className={cn(
+                    'w-full text-left px-3.5 py-2.5 text-xs font-medium flex items-center justify-between transition-colors',
+                    isAllCampuses
+                      ? 'bg-purple-50/80 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
+                  )}
                 >
-                  <span className="truncate">{user?.campusName || (lang === 'hi' ? 'परिसर 1 - मुख्य शाखा' : 'Vidyalaya Campus 1')}</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 ml-2"></span>
+                  <div className="truncate">
+                    <p className="truncate">{lang === 'hi' ? 'सभी परिसर (समग्र दृश्य)' : 'All Campuses (Consolidated)'}</p>
+                    <p className="text-[10px] text-gray-400 font-normal">View consolidated multi-campus records</p>
+                  </div>
+                  {isAllCampuses && <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 ml-2" />}
                 </button>
-                <button
-                  onClick={() => setShowCampusSelect(false)}
-                  className="w-full text-left px-3 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center justify-between"
-                >
-                  <span className="truncate">{lang === 'hi' ? 'शाखा 2 - सिविल लाइन्स' : 'Branch 2 - Civil Lines'}</span>
-                </button>
+
+                {/* Individual Campuses */}
+                <div className="max-h-56 overflow-y-auto divide-y divide-gray-50 dark:divide-slate-800/60">
+                  {campuses.map((campus) => {
+                    const isSelected = selectedCampusId === campus.id;
+                    return (
+                      <button
+                        key={campus.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCampusId(campus.id);
+                          setShowCampusSelect(false);
+                        }}
+                        className={cn(
+                          'w-full text-left px-3.5 py-2 text-xs flex items-center justify-between transition-colors',
+                          isSelected
+                            ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
+                        )}
+                      >
+                        <div className="truncate pr-2">
+                          <p className="truncate font-semibold">{campus.name}</p>
+                          <p className="text-[10px] text-gray-400">{campus.city}, {campus.state}</p>
+                        </div>
+                        {isSelected && <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

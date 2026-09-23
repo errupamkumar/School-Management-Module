@@ -23,6 +23,7 @@ import {
   Briefcase,
   GraduationCap,
   Volume2,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import toast from 'react-hot-toast';
@@ -143,6 +144,21 @@ export default function AttendancePage() {
       })
       .catch((err) => console.log('Loaded default classes'));
   }, []);
+
+  // SA-07: Reset attendance filters back to default
+  const handleResetFilters = () => {
+    setDate(new Date().toISOString().split('T')[0]);
+    if (classes.length > 0) {
+      setSelectedClassId(classes[0].id);
+      if (classes[0].sections && classes[0].sections.length > 0) {
+        setSelectedSectionId(classes[0].sections[0].id);
+      }
+    }
+    setSearchFilter('');
+    setTargetType('student');
+    setMode('manual');
+    toast.success('Attendance filters reset to defaults');
+  };
 
   // Dynamically load real students for selected section & date
   useEffect(() => {
@@ -464,8 +480,17 @@ export default function AttendancePage() {
                 )}
               </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-center pt-2">
+              {/* Submit & Reset Buttons (SA-07) */}
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-bold rounded-2xl transition-all"
+                  title="Clear and reset all attendance filters"
+                >
+                  <RotateCcw size={15} />
+                  <span>Clear / Reset Filters</span>
+                </button>
                 <button
                   type="submit"
                   className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-[#5c28d2] hover:bg-[#4d1fbc] text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-purple-600/25 transition-all transform active:scale-95"
@@ -621,15 +646,35 @@ export default function AttendancePage() {
                 </span>
               </div>
 
-              <div className="relative w-full sm:w-64">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  placeholder="Search by name, roll no..."
-                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/20"
-                />
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative w-full sm:w-64">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchFilter}
+                    onChange={(e) => setSearchFilter(e.target.value)}
+                    placeholder="Search by name, roll no..."
+                    className="w-full pl-9 pr-8 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
+                  {searchFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchFilter('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+                {searchFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchFilter('')}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-gray-300 transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             </div>
 

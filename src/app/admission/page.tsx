@@ -183,6 +183,11 @@ export default function AdmissionHubPage() {
               <ArrowRight size={14} />
             </div>
           </Link>
+
+          <Link
+            href="/admission/inquiries"
+            className="group bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all p-6 flex flex-col justify-between"
+          >
             <div>
               <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:bg-amber-600 group-hover:text-white transition-all">
                 <HelpCircle size={22} />

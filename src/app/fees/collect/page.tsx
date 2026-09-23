@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { PageHeader } from '@/components/ui';
 import { Receipt, Search, Printer, IndianRupee } from 'lucide-react';

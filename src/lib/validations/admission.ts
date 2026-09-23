@@ -69,8 +69,8 @@ export const enrollStudentSchema = z.object({
   classId: z.string().min(1, 'Class ID is required'),
   sectionId: z.string().min(1, 'Section ID is required'),
   rollNo: z.string().optional(),
-  academicYear: z.string().default('2025-26'),
+  academicYear: z.string().optional().default('2025-26'),
   assignedStaffId: z.string().optional(),
 });
 
-export type EnrollStudentInput = z.infer<typeof enrollStudentSchema>;
+export type EnrollStudentInput = z.input<typeof enrollStudentSchema>;

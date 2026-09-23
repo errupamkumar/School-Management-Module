@@ -18,13 +18,15 @@ export default function BulkAdmissionPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [targetClass, setTargetClass] = useState('Class 10');
   const [targetSection, setTargetSection] = useState('Section A');
+  const [targetSession, setTargetSession] = useState('2025-26');
+  const [admissionDate, setAdmissionDate] = useState(new Date().toISOString().split('T')[0]);
   const [importing, setImporting] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
   const sampleRows = [
-    { name: 'Aarav Sharma', gender: 'MALE', dob: '2011-05-14', father: 'Ramesh Sharma', phone: '9876500001' },
-    { name: 'Diya Verma', gender: 'FEMALE', dob: '2011-08-22', father: 'Sanjay Verma', phone: '9876500002' },
-    { name: 'Kabir Gupta', gender: 'MALE', dob: '2011-03-10', father: 'Anil Gupta', phone: '9876500003' },
+    { name: 'Aarav Sharma', gender: 'MALE', dob: '2011-05-14', admissionDate: '2026-04-01', session: '2025-26', father: 'Ramesh Sharma', phone: '9876500001' },
+    { name: 'Diya Verma', gender: 'FEMALE', dob: '2011-08-22', admissionDate: '2026-04-01', session: '2025-26', father: 'Sanjay Verma', phone: '9876500002' },
+    { name: 'Kabir Gupta', gender: 'MALE', dob: '2011-03-10', admissionDate: '2026-04-02', session: '2025-26', father: 'Anil Gupta', phone: '9876500003' },
   ];
 
   const handleImport = (e: React.FormEvent) => {
@@ -32,13 +34,13 @@ export default function BulkAdmissionPage() {
     setImporting(true);
     setTimeout(() => {
       setImporting(false);
-      setNotification('Bulk import completed! 42 students enrolled into ' + targetClass + ' ' + targetSection);
+      setNotification(`Bulk import completed! 42 students enrolled into ${targetClass} ${targetSection} for Session ${targetSession}!`);
       setSelectedFile(null);
     }, 1200);
   };
 
   const downloadSampleTemplate = () => {
-    const csvContent = 'data:text/csv;charset=utf-8,First Name,Last Name,Gender,DOB,Father Name,Father Phone,Mother Name,Address\nAarav,Sharma,MALE,2011-05-14,Ramesh Sharma,9876500001,Suman Sharma,Civil Lines\n';
+    const csvContent = 'data:text/csv;charset=utf-8,First Name,Last Name,Gender,DOB,Admission Date,Session,Father Name,Father Phone,Mother Name,Address\nAarav,Sharma,MALE,2011-05-14,2026-04-01,2025-26,Ramesh Sharma,9876500001,Suman Sharma,Civil Lines\n';
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -94,7 +96,7 @@ export default function BulkAdmissionPage() {
 
         {/* Upload Form Card */}
         <form onSubmit={handleImport} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
                 Target Grade Class
@@ -123,6 +125,33 @@ export default function BulkAdmissionPage() {
                 <option>Section B</option>
                 <option>Section C</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                Academic Session (SA-03)
+              </label>
+              <select
+                value={targetSession}
+                onChange={(e) => setTargetSession(e.target.value)}
+                className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+              >
+                <option value="2024-25">Session 2024-25</option>
+                <option value="2025-26">Session 2025-26</option>
+                <option value="2026-27">Session 2026-27</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                Admission Date (SA-03)
+              </label>
+              <input
+                type="date"
+                value={admissionDate}
+                onChange={(e) => setAdmissionDate(e.target.value)}
+                className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+              />
             </div>
           </div>
 
@@ -160,6 +189,8 @@ export default function BulkAdmissionPage() {
                     <th className="py-2.5 px-4">Student Name</th>
                     <th className="py-2.5 px-4">Gender</th>
                     <th className="py-2.5 px-4">DOB</th>
+                    <th className="py-2.5 px-4">Adm Date</th>
+                    <th className="py-2.5 px-4">Session</th>
                     <th className="py-2.5 px-4">Father Name</th>
                     <th className="py-2.5 px-4">Phone Number</th>
                   </tr>
@@ -170,6 +201,8 @@ export default function BulkAdmissionPage() {
                       <td className="py-2.5 px-4 font-semibold text-gray-900">{r.name}</td>
                       <td className="py-2.5 px-4">{r.gender}</td>
                       <td className="py-2.5 px-4 font-mono">{r.dob}</td>
+                      <td className="py-2.5 px-4 font-mono text-purple-700 font-bold">{r.admissionDate}</td>
+                      <td className="py-2.5 px-4 font-mono text-indigo-700 font-bold">{r.session}</td>
                       <td className="py-2.5 px-4">{r.father}</td>
                       <td className="py-2.5 px-4 font-mono">{r.phone}</td>
                     </tr>
