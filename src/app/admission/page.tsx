@@ -136,9 +136,53 @@ export default function AdmissionHubPage() {
           </Link>
 
           <Link
-            href="/admission/inquiries"
-            className="group bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all p-6 flex flex-col justify-between"
+            href="/admission/crm"
+            className="group bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/50 rounded-3xl border-2 border-indigo-200 shadow-md hover:shadow-xl transition-all p-6 flex flex-col justify-between relative overflow-hidden"
           >
+            <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider">
+              Lead CRM
+            </div>
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mb-4 shadow-md shadow-indigo-200">
+                <ClipboardList size={22} />
+              </div>
+              <h3 className="text-lg font-black text-gray-900 group-hover:text-indigo-600 transition-colors">
+                Admission CRM Pipeline
+              </h3>
+              <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
+                6-stage lead Kanban board, atomic class seat counter, instant duplicate identity check, and 1-click SIS enrollment.
+              </p>
+            </div>
+            <div className="mt-5 pt-3 border-t border-indigo-100 flex items-center justify-between text-xs font-bold text-indigo-700">
+              <span>Open Pipeline Board</span>
+              <ArrowRight size={14} />
+            </div>
+          </Link>
+
+          <Link
+            href="/apply"
+            target="_blank"
+            className="group bg-gradient-to-br from-emerald-50/50 via-white to-teal-50/50 rounded-3xl border border-emerald-200 shadow-sm hover:shadow-md transition-all p-6 flex flex-col justify-between"
+          >
+            <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+              Public Link
+            </div>
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                <GraduationCap size={22} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 group-hover:text-emerald-700 transition-colors">
+                Public Self-Application Portal
+              </h3>
+              <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
+                Share public 5-step registration wizard with parents (/apply): local draft auto-save and instant PDF token download.
+              </p>
+            </div>
+            <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-emerald-700">
+              <span>Launch /apply</span>
+              <ArrowRight size={14} />
+            </div>
+          </Link>
             <div>
               <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:bg-amber-600 group-hover:text-white transition-all">
                 <HelpCircle size={22} />

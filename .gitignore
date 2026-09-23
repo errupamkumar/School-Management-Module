@@ -10,3 +10,5 @@ public/uploads/*
 prisma/*.db
 *.tsbuildinfo
 .backup-original/
+~$*
+

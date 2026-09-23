@@ -47,6 +47,17 @@ enum BloodGroup {
   O_NEGATIVE
 }
 
+enum AdmissionStatus {
+  INQUIRY
+  FORM_SUBMITTED
+  DOCS_VERIFIED
+  SEAT_OFFERED
+  FEES_PAID
+  ENROLLED
+  REJECTED
+  WITHDRAWN
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -110,6 +121,7 @@ model Campus {
   notices         Notice[]
   events          Event[]
   inventory       InventoryItem[]
+  admissionInquiries AdmissionInquiry[]
 
   @@index([code])
 }
@@ -175,6 +187,11 @@ model Student {
   leaveRequests     LeaveRequest[]
   documents         StudentDocument[]
   promotions        StudentPromotion[]
+
+  // Admission linkage
+  admissionInquiryId String?           @unique
+  admissionInquiry   AdmissionInquiry? @relation(fields: [admissionInquiryId], references: [id])
+  applicationToken   String?           @unique
 
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -341,6 +358,8 @@ model Class {
   promotionsFrom  StudentPromotion[] @relation("PromotionFrom")
   promotionsTo    StudentPromotion[] @relation("PromotionTo")
   homeworks    Homework[]
+  admissionInquiries AdmissionInquiry[]
+  classCapacities    ClassCapacity[]
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -365,6 +384,8 @@ model Section {
   timetableSlots  TimetableSlot[]
   attendances     Attendance[]
   teacherSubjects TeacherSubject[]
+  admissionInquiries AdmissionInquiry[]
+  classCapacities    ClassCapacity[]
 
   @@unique([name, classId])
 }
@@ -959,3 +980,106 @@ model AcademicSession {
   isCurrent   Boolean  @default(false)
   createdAt   DateTime @default(now())
 }
+
+// ==================== ADMISSION & ENROLLMENT CRM ====================
+
+model AdmissionInquiry {
+  id              String          @id @default(cuid())
+  applicationNo   String          @unique
+  token           String          @unique
+  campusId        String
+  campus          Campus          @relation(fields: [campusId], references: [id])
+  classId         String
+  class           Class           @relation(fields: [classId], references: [id])
+  sectionId       String?
+  section         Section?        @relation(fields: [sectionId], references: [id])
+
+  // Student details
+  firstName       String
+  lastName        String
+  gender          Gender
+  dob             DateTime
+  bloodGroup      BloodGroup?
+  religion        Religion?
+  caste           String?
+  category        String?
+  nationality     String          @default("Indian")
+  aadhaarNo       String?
+  photo           String?
+  previousSchool  String?
+  previousGrade   String?
+
+  // Parent / Guardian details
+  parentName      String
+  parentPhone     String
+  parentEmail     String?
+  parentRelation  String          @default("FATHER")
+  parentAadhaar   String?
+  parentOccupation String?
+  annualIncome    Float?
+
+  // Address
+  streetAddress   String?
+  city            String?
+  state           String?         @default("Uttar Pradesh")
+  pincode         String?
+
+  // Pipeline Status & Management
+  status          AdmissionStatus @default(INQUIRY)
+  priority        String          @default("MEDIUM")
+  source          String          @default("ONLINE_PORTAL")
+  assignedStaffId String?
+  notes           String?         @db.Text
+  rejectionReason String?
+
+  // SIS Integration
+  student         Student?
+  documents       AdmissionDocument[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([campusId])
+  @@index([classId])
+  @@index([sectionId])
+  @@index([status])
+  @@index([parentPhone])
+  @@index([aadhaarNo])
+}
+
+model AdmissionDocument {
+  id          String           @id @default(cuid())
+  inquiryId   String
+  inquiry     AdmissionInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  docType     String           // AADHAAR, BIRTH_CERTIFICATE, PREV_MARKSHEET, TRANSFER_CERTIFICATE, PHOTO
+  fileName    String
+  fileUrl     String
+  isVerified  Boolean          @default(false)
+  verifiedBy  String?
+  verifiedAt  DateTime?
+  remarks     String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([inquiryId])
+}
+
+model ClassCapacity {
+  id            String   @id @default(cuid())
+  classId       String
+  class         Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  sectionId     String?
+  section       Section? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  academicYear  String   @default("2025-26")
+  maxCapacity   Int      @default(40)
+  enrolledCount Int      @default(0)
+  reservedSeats Int      @default(0)
+  version       Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([classId, sectionId, academicYear])
+  @@index([classId])
+  @@index([sectionId])
+}
+

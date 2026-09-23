@@ -1,15 +1,19 @@
 'use client';
+import { useSession } from 'next-auth/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { StatCard } from '@/components/ui';
 import { GraduationCap, IndianRupee, CheckSquare, BookOpen, Calendar, Award, FileText, Bell } from 'lucide-react';
 import { formatCurrency } from '@/utils/helpers';
 
 export default function ParentDashboard() {
+  const { data: session } = useSession();
+  const parentName = session?.user?.name || 'Parent';
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="bg-gradient-to-r from-violet-600 to-purple-700 rounded-2xl p-6 text-white">
-          <h2 className="text-2xl font-bold">Welcome, Parent!</h2>
+          <h2 className="text-2xl font-bold">Welcome, {parentName}!</h2>
           <p className="text-violet-200 mt-1">Stay updated with your child&apos;s progress and school activities.</p>
         </div>
 

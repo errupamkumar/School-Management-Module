@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { PageHeader } from '@/components/ui';
 import { Save, Upload, UserPlus } from 'lucide-react';
@@ -24,6 +24,77 @@ export default function NewAdmissionPage() {
     streetAddress: '', village: '', post: '', policeStation: '', city: '', district: '', state: 'Uttar Pradesh', pincode: '',
   });
 
+  const [campuses, setCampuses] = useState<Array<{ id: string; name: string }>>([]);
+  const [classes, setClasses] = useState<Array<{ id: string; name: string; sections: Array<{ id: string; name: string; capacity?: number }> }>>([]);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [capacityStatus, setCapacityStatus] = useState<{ availableSeats: number; maxCapacity: number } | null>(null);
+  const [admittedStudent, setAdmittedStudent] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/campus')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.data && d.data.length > 0) {
+          setCampuses(d.data);
+          update('campusId', d.data[0].id);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/classes')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.data && d.data.length > 0) {
+          setClasses(d.data);
+          update('classId', d.data[0].id);
+          if (d.data[0].sections && d.data[0].sections.length > 0) {
+            update('sectionId', d.data[0].sections[0].id);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Check section capacity whenever class or section changes
+  useEffect(() => {
+    if (!form.classId) return;
+    const q = new URLSearchParams({
+      action: 'check-capacity',
+      classId: form.classId,
+      ...(form.sectionId ? { sectionId: form.sectionId } : {}),
+    });
+    fetch(`/api/admission?${q.toString()}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.data) {
+          setCapacityStatus(res.data);
+        }
+      })
+      .catch(() => {});
+  }, [form.classId, form.sectionId]);
+
+  // Duplicate identity check helper
+  const checkDuplicates = async () => {
+    if ((form.aadhaarNo && form.aadhaarNo.length === 12) || (form.fatherPhone && form.fatherPhone.length === 10)) {
+      try {
+        const q = new URLSearchParams({
+          action: 'check-duplicate',
+          aadhaarNo: form.aadhaarNo || '',
+          phone: form.fatherPhone || '',
+          firstName: form.firstName || '',
+          lastName: form.lastName || '',
+        });
+        const res = await fetch(`/api/admission?${q.toString()}`);
+        const data = await res.json();
+        if (data.success && data.isDuplicate && data.matches?.length > 0) {
+          setDuplicateWarning(`Warning: ${data.matches[0].description}`);
+        } else {
+          setDuplicateWarning(null);
+        }
+      } catch {}
+    }
+  };
+
   const update = (key: string, value: any) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,7 +105,7 @@ export default function NewAdmissionPage() {
       const data = await res.json();
       if (data.success) {
         toast.success(`Student admitted! Admission No: ${data.data.admissionNo}`);
-        // Reset form
+        setAdmittedStudent(data.data);
       } else {
         toast.error(data.error || 'Failed to admit student');
       }
@@ -64,6 +135,31 @@ export default function NewAdmissionPage() {
           </button>
         ))}
       </div>
+
+      {duplicateWarning && (
+        <div className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-semibold flex items-center justify-between">
+          <span>{duplicateWarning}</span>
+          <button type="button" onClick={() => setDuplicateWarning(null)} className="text-amber-700 underline font-bold">Dismiss</button>
+        </div>
+      )}
+
+      {admittedStudent && (
+        <div className="mb-6 p-5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h4 className="font-bold text-sm">Student Successfully Admitted!</h4>
+            <p className="text-xs text-emerald-700 mt-0.5">
+              Admission No: <span className="font-mono font-bold">{admittedStudent.admissionNo}</span>
+            </p>
+          </div>
+          <a
+            href={`/fees/collect?admissionNo=${admittedStudent.admissionNo}`}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+          >
+            <span>Proceed to Collect First Fee</span>
+            <span className="font-mono">→</span>
+          </a>
+        </div>
+      )}
 
       <form id="admission-form" onSubmit={handleSubmit}>
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -118,7 +214,7 @@ export default function NewAdmissionPage() {
               </div>
               <div>
                 <label className="form-label">Aadhaar Number</label>
-                <input type="text" value={form.aadhaarNo} onChange={(e) => update('aadhaarNo', e.target.value)} className="form-input" maxLength={12} placeholder="12-digit Aadhaar" />
+                <input type="text" value={form.aadhaarNo} onChange={(e) => update('aadhaarNo', e.target.value)} onBlur={checkDuplicates} className="form-input" maxLength={12} placeholder="12-digit Aadhaar" />
               </div>
               <div>
                 <label className="form-label">Photo Upload</label>
@@ -152,7 +248,7 @@ export default function NewAdmissionPage() {
               </div>
               <div>
                 <label className="form-label">Father Phone No *</label>
-                <input type="tel" value={form.fatherPhone} onChange={(e) => update('fatherPhone', e.target.value)} className="form-input" maxLength={10} required />
+                <input type="tel" value={form.fatherPhone} onChange={(e) => update('fatherPhone', e.target.value)} onBlur={checkDuplicates} className="form-input" maxLength={10} required />
               </div>
               <div>
                 <label className="form-label">Mother Name</label>
@@ -184,22 +280,48 @@ export default function NewAdmissionPage() {
                 <label className="form-label">Campus *</label>
                 <select value={form.campusId} onChange={(e) => update('campusId', e.target.value)} className="form-select" required>
                   <option value="">Select Campus</option>
-                  <option value="main">Main Campus</option>
-                  <option value="branch1">Branch 1</option>
+                  {campuses.map((camp) => (
+                    <option key={camp.id} value={camp.id}>{camp.name}</option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="form-label">Class *</label>
-                <select value={form.classId} onChange={(e) => update('classId', e.target.value)} className="form-select" required>
+                <select
+                  value={form.classId}
+                  onChange={(e) => {
+                    const newClassId = e.target.value;
+                    update('classId', newClassId);
+                    const selected = classes.find((c) => c.id === newClassId);
+                    if (selected && selected.sections?.length > 0) {
+                      update('sectionId', selected.sections[0].id);
+                    } else {
+                      update('sectionId', '');
+                    }
+                  }}
+                  className="form-select"
+                  required
+                >
                   <option value="">Select Class</option>
-                  {CLASS_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>Class {c.name}</option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="form-label">Section *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="form-label !mb-0">Section *</label>
+                  {capacityStatus && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      {capacityStatus.availableSeats} / {capacityStatus.maxCapacity} Seats Available
+                    </span>
+                  )}
+                </div>
                 <select value={form.sectionId} onChange={(e) => update('sectionId', e.target.value)} className="form-select" required>
                   <option value="">Select Section</option>
-                  {SECTION_NAMES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {(classes.find((c) => c.id === form.classId)?.sections || []).map((s) => (
+                    <option key={s.id} value={s.id}>Section {s.name}</option>
+                  ))}
                 </select>
               </div>
               <div>

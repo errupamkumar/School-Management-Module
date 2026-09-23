@@ -15,7 +15,7 @@ export default async function HomePage() {
         TEACHER: '/dashboard/teacher',
         PARENT: '/dashboard/parent',
         STUDENT: '/dashboard/student',
-        ACCOUNTANT: '/dashboard/admin',
+        ACCOUNTANT: '/fees/collect',
       };
       redirect(dashMap[role] || '/dashboard/admin');
     }

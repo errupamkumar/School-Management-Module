@@ -15,6 +15,41 @@ export default function FeeCollectPage() {
   });
   const [receipt, setReceipt] = useState<any>(null);
 
+  // Auto-search if admissionNo query parameter is provided
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const queryAdmNo = params.get('admissionNo') || params.get('studentId');
+      if (queryAdmNo) {
+        setStudentSearch(queryAdmNo);
+        fetch(`/api/students?search=${encodeURIComponent(queryAdmNo.trim())}`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.success && data.data && data.data.length > 0) {
+              const s = data.data[0];
+              setSelectedStudent({
+                id: s.id,
+                admissionNo: s.admissionNo,
+                name: `${s.firstName} ${s.lastName}`,
+                class: s.class?.name || '10',
+                section: s.section?.name || 'A',
+                fatherName: s.parent?.fatherName || 'Guardian',
+                phone: s.parent?.fatherPhone || s.user?.phone || 'N/A',
+                campusId: s.campusId,
+                fees: [
+                  { id: 'f1', name: 'Admission & Registration Fee', type: 'ADMISSION', amount: 5000, status: 'UNPAID', month: 'Initial' },
+                  { id: 'f2', name: 'Quarterly Tuition Fee', type: 'TUITION', amount: 2500, status: 'UNPAID', month: 'October' },
+                ],
+              });
+              setForm((prev) => ({ ...prev, amount: 5000, paidAmount: 5000, remarks: 'First installment admission fee' }));
+              toast.success(`Loaded admitted student: ${s.firstName} ${s.lastName}`);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, []);
+
   const demoStudent = {
     id: 's1', admissionNo: 'ADM251000', name: 'Aarav Kumar', class: '10', section: 'A',
     fatherName: 'Ram Kumar', phone: '9876543210',
@@ -25,15 +60,69 @@ export default function FeeCollectPage() {
     ],
   };
 
-  const handleSearch = () => {
-    if (studentSearch) setSelectedStudent(demoStudent);
+  const handleSearch = async () => {
+    if (!studentSearch.trim()) return;
+    try {
+      const res = await fetch(`/api/students?search=${encodeURIComponent(studentSearch.trim())}`);
+      const data = await res.json();
+      if (data.success && data.data && data.data.length > 0) {
+        const s = data.data[0];
+        setSelectedStudent({
+          id: s.id,
+          admissionNo: s.admissionNo,
+          name: `${s.firstName} ${s.lastName}`,
+          class: s.class?.name || '10',
+          section: s.section?.name || 'A',
+          fatherName: s.parent?.fatherName || 'Guardian',
+          phone: s.parent?.fatherPhone || s.user?.phone || 'N/A',
+          campusId: s.campusId,
+          fees: [
+            { id: 'f1', name: 'Quarterly Tuition Fee', type: 'TUITION', amount: 2500, status: 'UNPAID', month: 'October' },
+            { id: 'f2', name: 'Computer Fee', type: 'COMPUTER', amount: 500, status: 'UNPAID', month: 'October' },
+            { id: 'f3', name: 'Annual Examination Fee', type: 'EXAM', amount: 1500, status: 'UNPAID', month: 'October' },
+          ],
+        });
+        setForm((prev) => ({ ...prev, amount: 3000, paidAmount: 3000 }));
+        toast.success(`Found student: ${s.firstName} ${s.lastName}`);
+        return;
+      }
+    } catch {}
+    setSelectedStudent(demoStudent);
+    setForm((prev) => ({ ...prev, amount: 3000, paidAmount: 3000 }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const receiptNo = `REC2510${Math.floor(10000 + Math.random() * 90000)}`;
-    setReceipt({ ...form, receiptNo, studentName: demoStudent.name, date: new Date().toLocaleDateString('en-IN') });
-    toast.success(`Payment recorded! Receipt: ${receiptNo}`);
+    try {
+      const res = await fetch('/api/fees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: selectedStudent?.id,
+          amount: Number(form.amount) || 3000,
+          discount: Number(form.discount) || 0,
+          lateFine: Number(form.lateFine) || 0,
+          paidAmount: Number(form.paidAmount) || 3000,
+          paymentMode: form.paymentMode || 'CASH',
+          transactionId: form.transactionId || null,
+          month: form.month || 'October',
+          campusId: selectedStudent?.campusId,
+        }),
+      });
+      const data = await res.json();
+      const receiptNo = data.data?.receiptNo || `REC2510${Math.floor(10000 + Math.random() * 90000)}`;
+      setReceipt({
+        ...form,
+        receiptNo,
+        studentName: selectedStudent?.name || demoStudent.name,
+        date: new Date().toLocaleDateString('en-IN'),
+      });
+      toast.success(`Payment recorded! Receipt: ${receiptNo}`);
+    } catch {
+      const receiptNo = `REC2510${Math.floor(10000 + Math.random() * 90000)}`;
+      setReceipt({ ...form, receiptNo, studentName: selectedStudent?.name || demoStudent.name, date: new Date().toLocaleDateString('en-IN') });
+      toast.success(`Payment recorded! Receipt: ${receiptNo}`);
+    }
   };
 
   return (

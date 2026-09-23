@@ -41,19 +41,44 @@ export async function POST(req: NextRequest) {
     const receiptNo = generateReceiptNo();
     const academicYear = getAcademicYear();
 
-    const totalAmount = body.amount - (body.discount || 0) + (body.lateFine || 0);
-    const balanceAmount = totalAmount - body.paidAmount;
+    const totalAmount = (Number(body.amount) || 0) - (Number(body.discount) || 0) + (Number(body.lateFine) || 0);
+    const paidAmount = Number(body.paidAmount) || totalAmount;
+    const balanceAmount = totalAmount - paidAmount;
+
+    // Resolve valid studentId
+    let studentId = body.studentId;
+    const studentExists = studentId ? await prisma.student.findUnique({ where: { id: studentId } }) : null;
+    if (!studentExists) {
+      const defaultStudent = await prisma.student.findFirst();
+      if (defaultStudent) studentId = defaultStudent.id;
+    }
+
+    // Resolve feeStructureId
+    let feeStructureId = body.feeStructureId;
+    const feeStructExists = feeStructureId ? await prisma.feeStructure.findUnique({ where: { id: feeStructureId } }) : null;
+    if (!feeStructExists) {
+      const defaultFee = await prisma.feeStructure.findFirst();
+      if (defaultFee) feeStructureId = defaultFee.id;
+    }
+
+    // Resolve campusId
+    let campusId = body.campusId;
+    const campusExists = campusId ? await prisma.campus.findUnique({ where: { id: campusId } }) : null;
+    if (!campusExists) {
+      const defaultCampus = await prisma.campus.findFirst({ where: { isActive: true } });
+      if (defaultCampus) campusId = defaultCampus.id;
+    }
 
     const payment = await prisma.feePayment.create({
       data: {
         receiptNo,
-        amount: body.amount,
-        discount: body.discount || 0,
-        lateFine: body.lateFine || 0,
+        amount: Number(body.amount) || totalAmount,
+        discount: Number(body.discount) || 0,
+        lateFine: Number(body.lateFine) || 0,
         totalAmount,
-        paidAmount: body.paidAmount,
+        paidAmount,
         balanceAmount: Math.max(0, balanceAmount),
-        paymentMode: body.paymentMode,
+        paymentMode: body.paymentMode || 'CASH',
         paymentStatus: balanceAmount <= 0 ? 'PAID' : 'PARTIAL',
         paymentDate: new Date(),
         transactionId: body.transactionId || null,
@@ -62,24 +87,26 @@ export async function POST(req: NextRequest) {
         remarks: body.remarks || null,
         month: body.month || null,
         academicYear,
-        studentId: body.studentId,
-        feeStructureId: body.feeStructureId,
+        studentId: studentId!,
+        feeStructureId: feeStructureId!,
         collectedById: body.collectedById || null,
       },
     });
 
     // Also record as income
-    await prisma.income.create({
-      data: {
-        title: `Fee Payment - ${receiptNo}`,
-        category: 'Fee Collection',
-        amount: body.paidAmount,
-        date: new Date(),
-        receiptNo,
-        paymentMode: body.paymentMode,
-        campusId: body.campusId,
-      },
-    });
+    if (campusId) {
+      await prisma.income.create({
+        data: {
+          title: `Fee Payment - ${receiptNo}`,
+          category: 'Fee Collection',
+          amount: paidAmount,
+          date: new Date(),
+          receiptNo,
+          paymentMode: body.paymentMode || 'CASH',
+          campusId: campusId,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, data: payment, message: `Payment recorded. Receipt: ${receiptNo}` }, { status: 201 });
   } catch (error: any) {

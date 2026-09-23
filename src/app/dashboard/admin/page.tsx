@@ -106,6 +106,23 @@ export default function AdminDashboard() {
   const [greeting, setGreeting] = useState<string>('Good afternoon,');
   const [viewMode, setViewMode] = useState<'modern' | 'classic'>('modern');
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('vidyalaya_admin_view_mode') as 'modern' | 'classic';
+      if (saved && (saved === 'modern' || saved === 'classic')) {
+        setViewMode(saved);
+      }
+    }
+  }, []);
+
+  const handleToggleViewMode = () => {
+    const next = viewMode === 'modern' ? 'classic' : 'modern';
+    setViewMode(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('vidyalaya_admin_view_mode', next);
+    }
+  };
+
   // Quick SMS Modal State
   const [isSmsModalOpen, setIsSmsModalOpen] = useState(false);
   const [smsAudience, setSmsAudience] = useState('ALL_PARENTS');
@@ -512,7 +529,7 @@ export default function AdminDashboard() {
                   </div>
 
                   <button
-                    onClick={() => setViewMode(viewMode === 'modern' ? 'classic' : 'modern')}
+                    onClick={handleToggleViewMode}
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white text-[#5c23cf] hover:bg-purple-50 text-xs font-bold shadow-md transition-all transform active:scale-95"
                   >
                     <Sparkles size={13} className="text-[#5c23cf]" />

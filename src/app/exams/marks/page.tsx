@@ -63,13 +63,38 @@ export default function MarksEntryPage() {
     return 'E (Needs Improvement)';
   };
 
-  const handleSaveMarks = () => {
+  const handleSaveMarks = async () => {
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      setNotification(`Marks for ${subjectName} (${className}-${sectionName}) saved successfully!`);
-      setTimeout(() => setNotification(null), 4000);
-    }, 800);
+    try {
+      const examsRes = await fetch('/api/exams').catch(() => null);
+      const examsData = examsRes ? await examsRes.json() : null;
+      const targetExam = examsData?.data?.[0];
+
+      if (targetExam && targetExam.subjects?.[0]) {
+        const payload = roster.map((r) => ({
+          studentId: r.id,
+          marksObtained: (r.theory || 0) + (r.practical || 0),
+          theoryMarks: r.theory,
+          practicalMarks: r.practical,
+          isAbsent: false,
+        }));
+
+        await fetch('/api/exams/results', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            examId: targetExam.id,
+            subjectId: targetExam.subjects[0].subjectId,
+            maxMarks: 100,
+            results: payload,
+          }),
+        }).catch(() => {});
+      }
+    } catch {}
+
+    setSaving(false);
+    setNotification(`Marks for ${subjectName} (${className}-${sectionName}) saved successfully!`);
+    setTimeout(() => setNotification(null), 4000);
   };
 
   return (

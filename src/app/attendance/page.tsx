@@ -144,6 +144,24 @@ export default function AttendancePage() {
       .catch((err) => console.log('Loaded default classes'));
   }, []);
 
+  // Dynamically load real students for selected section & date
+  useEffect(() => {
+    if (!selectedSectionId) return;
+    fetch(`/api/attendance?sectionId=${selectedSectionId}&date=${date}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.data && d.data.length > 0) {
+          setStudents(d.data);
+          const initialMap: Record<string, string> = {};
+          d.data.forEach((s: any) => {
+            initialMap[s.id] = s.attendance?.status || 'PRESENT';
+          });
+          setRecords(initialMap);
+        }
+      })
+      .catch(() => {});
+  }, [selectedSectionId, date]);
+
   const handleClassChange = (classId: string) => {
     setSelectedClassId(classId);
     const cls = classes.find((c) => c.id === classId);
@@ -236,7 +254,7 @@ export default function AttendancePage() {
           remarks: remarks[s.id] || null,
         }));
 
-        await fetch('/api/attendance', {
+        const res = await fetch('/api/attendance', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -244,14 +262,18 @@ export default function AttendancePage() {
             date,
             records: payload,
           }),
-        }).catch(() => {});
-
-        toast.success('Student attendance updated successfully!');
+        });
+        const data = await res.json();
+        if (data.success) {
+          toast.success(data.message || 'Student attendance updated successfully!');
+        } else {
+          toast.error(data.error || 'Failed to update attendance');
+        }
       } else {
         toast.success('Employee attendance updated successfully!');
       }
-    } catch (e) {
-      toast.error('Failed to save attendance');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to save attendance');
     } finally {
       setSaving(false);
     }

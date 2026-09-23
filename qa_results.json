@@ -1,0 +1,301 @@
+{
+  "authResults": {
+    "Super Admin": {
+      "email": "admin@vidyalaya.com",
+      "authenticated": true,
+      "sessionRole": "SUPER_ADMIN",
+      "expectedRole": "SUPER_ADMIN",
+      "cookies": "Received"
+    },
+    "Teacher": {
+      "email": "teacher@school.com",
+      "authenticated": true,
+      "sessionRole": "TEACHER",
+      "expectedRole": "TEACHER",
+      "cookies": "Received"
+    },
+    "Accountant": {
+      "email": "accountant@school.com",
+      "authenticated": true,
+      "sessionRole": "ACCOUNTANT",
+      "expectedRole": "ACCOUNTANT",
+      "cookies": "Received"
+    },
+    "Parent": {
+      "email": "parent@school.com",
+      "authenticated": true,
+      "sessionRole": "PARENT",
+      "expectedRole": "PARENT",
+      "cookies": "Received"
+    },
+    "Student": {
+      "email": "student@school.com",
+      "authenticated": true,
+      "sessionRole": "STUDENT",
+      "expectedRole": "STUDENT",
+      "cookies": "Received"
+    }
+  },
+  "rbacMatrix": {
+    "Super Admin": {
+      "/dashboard/admin": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/dashboard/teacher": {
+        "status": 307,
+        "location": "/dashboard/admin"
+      },
+      "/dashboard/parent": {
+        "status": 307,
+        "location": "/dashboard/admin"
+      },
+      "/dashboard/student": {
+        "status": 307,
+        "location": "/dashboard/admin"
+      },
+      "/fees/collect": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/fees/dues": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/admission/new": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/attendance": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/exams": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/students": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/settings": {
+        "status": 200,
+        "location": "NONE"
+      }
+    },
+    "Teacher": {
+      "/dashboard/admin": {
+        "status": 307,
+        "location": "/dashboard/teacher"
+      },
+      "/dashboard/teacher": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/dashboard/parent": {
+        "status": 307,
+        "location": "/dashboard/teacher"
+      },
+      "/dashboard/student": {
+        "status": 307,
+        "location": "/dashboard/teacher"
+      },
+      "/fees/collect": {
+        "status": 307,
+        "location": "/dashboard/teacher"
+      },
+      "/fees/dues": {
+        "status": 307,
+        "location": "/dashboard/teacher"
+      },
+      "/admission/new": {
+        "status": 307,
+        "location": "/dashboard/teacher"
+      },
+      "/attendance": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/exams": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/students": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/settings": {
+        "status": 307,
+        "location": "/dashboard/teacher"
+      }
+    },
+    "Accountant": {
+      "/dashboard/admin": {
+        "status": 307,
+        "location": "/fees/collect"
+      },
+      "/dashboard/teacher": {
+        "status": 307,
+        "location": "/fees/collect"
+      },
+      "/dashboard/parent": {
+        "status": 307,
+        "location": "/fees/collect"
+      },
+      "/dashboard/student": {
+        "status": 307,
+        "location": "/fees/collect"
+      },
+      "/fees/collect": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/fees/dues": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/admission/new": {
+        "status": 307,
+        "location": "/fees/collect"
+      },
+      "/attendance": {
+        "status": 307,
+        "location": "/fees/collect"
+      },
+      "/exams": {
+        "status": 307,
+        "location": "/fees/collect"
+      },
+      "/students": {
+        "status": 307,
+        "location": "/fees/collect"
+      },
+      "/settings": {
+        "status": 307,
+        "location": "/fees/collect"
+      }
+    },
+    "Parent": {
+      "/dashboard/admin": {
+        "status": 307,
+        "location": "/dashboard/parent"
+      },
+      "/dashboard/teacher": {
+        "status": 307,
+        "location": "/dashboard/parent"
+      },
+      "/dashboard/parent": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/dashboard/student": {
+        "status": 307,
+        "location": "/dashboard/parent"
+      },
+      "/fees/collect": {
+        "status": 307,
+        "location": "/dashboard/parent"
+      },
+      "/fees/dues": {
+        "status": 307,
+        "location": "/dashboard/parent"
+      },
+      "/admission/new": {
+        "status": 307,
+        "location": "/dashboard/parent"
+      },
+      "/attendance": {
+        "status": 307,
+        "location": "/dashboard/parent"
+      },
+      "/exams": {
+        "status": 307,
+        "location": "/dashboard/parent"
+      },
+      "/students": {
+        "status": 307,
+        "location": "/dashboard/parent"
+      },
+      "/settings": {
+        "status": 307,
+        "location": "/dashboard/parent"
+      }
+    },
+    "Student": {
+      "/dashboard/admin": {
+        "status": 307,
+        "location": "/dashboard/student"
+      },
+      "/dashboard/teacher": {
+        "status": 307,
+        "location": "/dashboard/student"
+      },
+      "/dashboard/parent": {
+        "status": 307,
+        "location": "/dashboard/student"
+      },
+      "/dashboard/student": {
+        "status": 200,
+        "location": "NONE"
+      },
+      "/fees/collect": {
+        "status": 307,
+        "location": "/dashboard/student"
+      },
+      "/fees/dues": {
+        "status": 307,
+        "location": "/dashboard/student"
+      },
+      "/admission/new": {
+        "status": 307,
+        "location": "/dashboard/student"
+      },
+      "/attendance": {
+        "status": 307,
+        "location": "/dashboard/student"
+      },
+      "/exams": {
+        "status": 307,
+        "location": "/dashboard/student"
+      },
+      "/students": {
+        "status": 307,
+        "location": "/dashboard/student"
+      },
+      "/settings": {
+        "status": 307,
+        "location": "/dashboard/student"
+      }
+    }
+  },
+  "apiAudit": {
+    "GET /api/students": {
+      "status": 401,
+      "isOpenWithoutAuth": false
+    },
+    "GET /api/fees": {
+      "status": 401,
+      "isOpenWithoutAuth": false
+    },
+    "GET /api/attendance?sectionId=test": {
+      "status": 401,
+      "isOpenWithoutAuth": false
+    },
+    "GET /api/classes": {
+      "status": 401,
+      "isOpenWithoutAuth": false
+    },
+    "GET /api/expenses": {
+      "status": 401,
+      "isOpenWithoutAuth": false
+    },
+    "POST /api/students": {
+      "status": 401,
+      "isOpenWithoutAuth": false
+    },
+    "POST /api/fees": {
+      "status": 401,
+      "isOpenWithoutAuth": false
+    }
+  }
+}

@@ -54,11 +54,60 @@ export async function GET(req: NextRequest) {
   }
 }
 
+const BLOOD_GROUP_MAP: Record<string, any> = {
+  'A+': 'A_POSITIVE',
+  'A-': 'A_NEGATIVE',
+  'B+': 'B_POSITIVE',
+  'B-': 'B_NEGATIVE',
+  'AB+': 'AB_POSITIVE',
+  'AB-': 'AB_NEGATIVE',
+  'O+': 'O_POSITIVE',
+  'O-': 'O_NEGATIVE',
+  'A_POSITIVE': 'A_POSITIVE',
+  'A_NEGATIVE': 'A_NEGATIVE',
+  'B_POSITIVE': 'B_POSITIVE',
+  'B_NEGATIVE': 'B_NEGATIVE',
+  'AB_POSITIVE': 'AB_POSITIVE',
+  'AB_NEGATIVE': 'AB_NEGATIVE',
+  'O_POSITIVE': 'O_POSITIVE',
+  'O_NEGATIVE': 'O_NEGATIVE',
+};
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const admissionNo = generateAdmissionNo();
     const defaultPassword = await bcrypt.hash('student123', 10);
+
+    // Resolve campusId: if missing or invalid, resolve to first active campus
+    let campusId = body.campusId;
+    const campusExists = campusId ? await prisma.campus.findUnique({ where: { id: campusId } }) : null;
+    if (!campusExists) {
+      const defaultCampus = await prisma.campus.findFirst({ where: { isActive: true } });
+      if (defaultCampus) campusId = defaultCampus.id;
+    }
+
+    // Resolve classId: if passed by name (e.g. "10"), resolve to Class ID
+    let classId = body.classId;
+    const classExists = classId ? await prisma.class.findUnique({ where: { id: classId } }) : null;
+    if (!classExists && campusId) {
+      const foundClass = await prisma.class.findFirst({
+        where: { OR: [{ id: classId }, { name: classId }], campusId },
+      });
+      if (foundClass) classId = foundClass.id;
+    }
+
+    // Resolve sectionId: if passed by name (e.g. "A"), resolve to Section ID
+    let sectionId = body.sectionId;
+    const sectionExists = sectionId ? await prisma.section.findUnique({ where: { id: sectionId } }) : null;
+    if (!sectionExists && classId) {
+      const foundSection = await prisma.section.findFirst({
+        where: { OR: [{ id: sectionId }, { name: sectionId }], classId },
+      });
+      if (foundSection) sectionId = foundSection.id;
+    }
+
+    const bloodGroup = body.bloodGroup ? BLOOD_GROUP_MAP[body.bloodGroup] || null : null;
 
     // Create user first
     const email = body.fatherEmail || `${admissionNo.toLowerCase()}@student.vidyalaya.com`;
@@ -73,7 +122,7 @@ export async function POST(req: NextRequest) {
             phone: body.fatherPhone || null,
             password: await bcrypt.hash('parent123', 10),
             role: 'PARENT',
-            campusId: body.campusId || null,
+            campusId: campusId || null,
           },
         });
         const parent = await tx.parent.create({
@@ -100,7 +149,7 @@ export async function POST(req: NextRequest) {
           email,
           password: defaultPassword,
           role: 'STUDENT',
-          campusId: body.campusId || null,
+          campusId: campusId || null,
         },
       });
 
@@ -112,7 +161,7 @@ export async function POST(req: NextRequest) {
           lastName: body.lastName,
           gender: body.gender,
           dob: new Date(body.dob),
-          bloodGroup: body.bloodGroup || null,
+          bloodGroup,
           religion: body.religion || null,
           caste: body.caste || null,
           category: body.category || null,
@@ -129,9 +178,9 @@ export async function POST(req: NextRequest) {
           previousSchool: body.previousSchool || null,
           tcNumber: body.tcNumber || null,
           userId: studentUser.id,
-          campusId: body.campusId,
-          classId: body.classId,
-          sectionId: body.sectionId,
+          campusId: campusId!,
+          classId: classId!,
+          sectionId: sectionId!,
           parentId: parentId || null,
         },
       });

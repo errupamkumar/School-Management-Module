@@ -78,6 +78,22 @@ const DEMO_ACCOUNTS: Record<
     campusId: 'demo-campus-01',
     campusName: 'Vidyalaya Main Campus',
   },
+  'accountant@school.com': {
+    passwords: ['Accountant@123', 'accountant123', 'accountant', 'Accountant123'],
+    role: 'ACCOUNTANT',
+    name: 'Ramesh Gupta (Senior Accountant)',
+    id: 'demo-accountant-id',
+    campusId: 'demo-campus-01',
+    campusName: 'Vidyalaya Main Campus',
+  },
+  'accountant@vidyalaya.com': {
+    passwords: ['accountant123', 'Accountant@123', 'accountant', 'Accountant123'],
+    role: 'ACCOUNTANT',
+    name: 'Ramesh Gupta (Senior Accountant)',
+    id: 'demo-accountant-id-2',
+    campusId: 'demo-campus-01',
+    campusName: 'Vidyalaya Senior Secondary Campus',
+  },
 };
 
 export const authOptions: NextAuthOptions = {

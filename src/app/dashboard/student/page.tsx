@@ -1,15 +1,19 @@
 'use client';
+import { useSession } from 'next-auth/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { StatCard } from '@/components/ui';
 import { GraduationCap, CheckSquare, BookOpen, Award, Clock, Calendar } from 'lucide-react';
 
 export default function StudentDashboard() {
+  const { data: session } = useSession();
+  const studentName = session?.user?.name || 'Aarav';
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="bg-gradient-to-r from-cyan-600 to-blue-700 rounded-2xl p-6 text-white">
-          <h2 className="text-2xl font-bold">Hello, Aarav! 👋</h2>
-          <p className="text-cyan-200 mt-1">Class 10-A | Roll No: 1 | ADM251000</p>
+          <h2 className="text-2xl font-bold">Hello, {studentName}! 👋</h2>
+          <p className="text-cyan-200 mt-1">Class 10-A | Roll No: 1 | ADM2026100</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
