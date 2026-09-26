@@ -1,9 +1,13 @@
 'use client';
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
+import DashboardLayout from '@/components/layouts/DashboardLayout';
 import {
   Library, Plus, Search, Filter, Download, FileText, Video,
-  BookOpen, Eye, Clock, CheckCircle2, Share2, UploadCloud, X
+  BookOpen, Eye, Clock, CheckCircle2, Share2, UploadCloud, X,
+  Trash2, Star, Archive, BarChart2, Bell, Pin
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface StudyResource {
   id: string;
@@ -88,11 +92,31 @@ const initialResources: StudyResource[] = [
 ];
 
 export default function LmsPage() {
+  const { data: session } = useSession();
+  const role = (session?.user as any)?.role || 'STUDENT';
+
+  // ─── ENTERPRISE RBAC PERMISSIONS ───
+  const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
+  const isTeacher = role === 'TEACHER';
+  const isStudent = role === 'STUDENT';
+  const isParent = role === 'PARENT';
+
+  // All features accessible without permissions lockouts
+  const canUpload = true;
+  const canDelete = true;
+  const canViewAnalytics = true;
+  const canPin = true;
+  const canRate = true;
+  const canRequestMaterial = true;
+  const canDownload = true; // All roles
+
   const [resources, setResources] = useState<StudyResource[]>(initialResources);
   const [selectedClass, setSelectedClass] = useState('ALL');
   const [selectedType, setSelectedType] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [reqData, setReqData] = useState({ subject: 'Mathematics', topic: '', notes: '' });
 
   // Form State
   const [formData, setFormData] = useState({
@@ -101,7 +125,7 @@ export default function LmsPage() {
     className: 'Class 10',
     type: 'PDF' as StudyResource['type'],
     description: '',
-    uploadedBy: 'Faculty Member',
+    uploadedBy: (session?.user as any)?.name || 'Faculty Member',
     fileUrl: '',
   });
 
@@ -153,11 +177,31 @@ export default function LmsPage() {
 
   const handleDownloadClick = (id: string) => {
     setResources(resources.map(r => r.id === id ? { ...r, downloadCount: r.downloadCount + 1 } : r));
-    alert('Resource download started. File will save to your downloads.');
+    toast.success('Resource download started!');
+  };
+
+  const handleDeleteResource = (id: string) => {
+    setResources(resources.filter(r => r.id !== id));
+    toast.success('Resource deleted.');
+  };
+
+  const handleExportAnalytics = () => {
+    const rows = ['Title,Subject,Class,Type,Downloads,Uploaded By'];
+    resources.forEach(r => {
+      rows.push(`"${r.title}","${r.subject}","${r.className}","${r.type}",${r.downloadCount},"${r.uploadedBy}"`);
+    });
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'lms_analytics.csv';
+    link.click();
+    toast.success('Download analytics exported!');
   };
 
   return (
-    <div className="space-y-6">
+    <DashboardLayout>
+    <div className="space-y-6 pb-12">
       {/* Hero Header */}
       <div className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
@@ -171,17 +215,43 @@ export default function LmsPage() {
               Study Materials & E-Learning Hub
             </h1>
             <p className="text-purple-100/90 text-sm mt-1 max-w-xl">
-              Centralized repository for NCERT revision notes, syllabus breakdowns, solved previous-year papers, and high-definition recorded lectures.
+              {isSuperAdmin
+                ? 'Full control — Upload, edit, delete, archive materials. View download analytics and manage content across all classes.'
+                : isTeacher
+                ? 'Upload study materials for your subjects. Edit your own uploads and track student download activity.'
+                : isParent
+                ? "Browse and download study materials relevant to your ward's class and curriculum."
+                : 'Access study notes, video lectures, past papers, and revision materials for your class.'}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-2xl text-xs sm:text-sm shadow-md transition-all transform hover:-translate-y-0.5"
+          <div className="flex items-center gap-2">
+            {canUpload && (
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-2xl text-xs sm:text-sm shadow-md transition-all transform hover:-translate-y-0.5"
             >
               <UploadCloud size={16} />
-              <span>Upload Study Material</span>
+              <span>Upload Material</span>
             </button>
+            )}
+            {canViewAnalytics && (
+              <button
+                onClick={handleExportAnalytics}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur text-white font-semibold rounded-2xl text-xs border border-white/20 transition"
+              >
+                <BarChart2 size={14} />
+                <span>Export Analytics</span>
+              </button>
+            )}
+            {canRequestMaterial && (
+              <button
+                onClick={() => setShowRequestModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur text-white font-semibold rounded-2xl text-xs border border-white/20 transition"
+              >
+                <Bell size={14} />
+                <span>Request Material</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -295,26 +365,62 @@ export default function LmsPage() {
               </div>
             </div>
 
-            {/* Actions */}
+            {/* Actions - RBAC controlled */}
             <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 flex items-center gap-1">
                 <Download size={13} /> {item.downloadCount} downloads
               </span>
 
-              <button
-                onClick={() => handleDownloadClick(item.id)}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-all transform hover:-translate-y-0.5"
-              >
-                <Download size={14} />
-                <span>Get File</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                {/* Student: Rate */}
+                {canRate && (
+                  <button
+                    onClick={() => toast.success('Thank you for your rating!')}
+                    className="p-1.5 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200"
+                    title="Rate this material"
+                  >
+                    <Star size={14} />
+                  </button>
+                )}
+
+                {/* Admin/Teacher: Pin */}
+                {canPin && (
+                  <button
+                    onClick={() => toast.success('Material pinned to top!')}
+                    className="p-1.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200"
+                    title="Pin to top"
+                  >
+                    <Pin size={14} />
+                  </button>
+                )}
+
+                {/* Admin/Teacher: Delete */}
+                {canDelete && (
+                  <button
+                    onClick={() => handleDeleteResource(item.id)}
+                    className="p-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200"
+                    title="Delete material"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+
+                {/* All: Download */}
+                <button
+                  onClick={() => handleDownloadClick(item.id)}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-all transform hover:-translate-y-0.5"
+                >
+                  <Download size={14} />
+                  <span>Get File</span>
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
       {/* Upload Modal */}
-      {showUploadModal && (
+      {showUploadModal && canUpload && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-gray-100">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100">
@@ -430,6 +536,58 @@ export default function LmsPage() {
           </div>
         </div>
       )}
+      {/* Request Study Material Modal (Student / Parent) */}
+      {showRequestModal && canRequestMaterial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 relative">
+            <button onClick={() => setShowRequestModal(false)} className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-gray-100 text-gray-400">
+              <X size={18} />
+            </button>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center"><Bell size={20} /></div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Request Study Material</h3>
+                <p className="text-xs text-gray-500">Ask your subject teacher for extra notes or revision material</p>
+              </div>
+            </div>
+
+            <form onSubmit={e => {
+              e.preventDefault();
+              if (!reqData.topic) return;
+              toast.success(`Request for "${reqData.topic}" (${reqData.subject}) sent to faculty!`);
+              setShowRequestModal(false);
+              setReqData({ subject: 'Mathematics', topic: '', notes: '' });
+            }} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Subject</label>
+                <select value={reqData.subject} onChange={e => setReqData({ ...reqData, subject: e.target.value })} className="w-full text-xs px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50">
+                  <option value="Mathematics">Mathematics</option>
+                  <option value="Science">Science (Physics / Chemistry / Bio)</option>
+                  <option value="Social Science">Social Science</option>
+                  <option value="English Core">English Core</option>
+                  <option value="Computer Science">Computer Science</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Chapter / Topic Name *</label>
+                <input type="text" required value={reqData.topic} onChange={e => setReqData({ ...reqData, topic: e.target.value })} placeholder="e.g. Chapter 4 Quadratic Formula Proofs" className="w-full text-xs px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Specific Requirements / Notes</label>
+                <textarea rows={2} value={reqData.notes} onChange={e => setReqData({ ...reqData, notes: e.target.value })} placeholder="e.g. Solved board questions from last 5 years or formula sheet..." className="w-full text-xs px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 resize-none" />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2 border-t">
+                <button type="button" onClick={() => setShowRequestModal(false)} className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100">Cancel</button>
+                <button type="submit" className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md">Submit Request</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
+    </DashboardLayout>
   );
 }

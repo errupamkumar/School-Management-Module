@@ -89,7 +89,13 @@ export default function Header() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('searchPlaceholder', 'Search...')}
+              placeholder={
+                user?.role === 'STUDENT'
+                  ? (lang === 'hi' ? 'मेरी कक्षाएं, गृहकार्य, सूचनाएं खोजें...' : 'Search my subjects, tasks, circulars...')
+                  : user?.role === 'PARENT'
+                  ? (lang === 'hi' ? 'परिपत्र, समय सारणी, सूचनाएं खोजें...' : 'Search circulars, timetable, events...')
+                  : t('searchPlaceholder', 'Search students, teachers, classes...')
+              }
               className="w-full pl-9 pr-3 py-1.5 sm:py-2 bg-gray-50 dark:bg-slate-800/80 border border-gray-200/80 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-gray-900 dark:text-gray-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 dark:focus:border-purple-500 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
             />
           </div>

@@ -4,6 +4,7 @@ import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
+// Login page for Vidyalaya
 export default function LoginPage() {
   const { data: session, status } = useSession();
   const [email, setEmail] = useState('');
@@ -13,12 +14,40 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  // If already logged in, redirect directly to home/dashboard
+  const getRedirectUrl = (roleName?: string) => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const callback = params.get('callbackUrl');
+      if (callback && !callback.includes('/login')) {
+        return callback;
+      }
+    }
+    const roleRoutes: Record<string, string> = {
+      admin: '/dashboard/admin',
+      SUPER_ADMIN: '/dashboard/admin',
+      ADMIN: '/dashboard/admin',
+      teacher: '/dashboard/teacher',
+      TEACHER: '/dashboard/teacher',
+      parent: '/dashboard/parent',
+      PARENT: '/dashboard/parent',
+      student: '/dashboard/student',
+      STUDENT: '/dashboard/student',
+      accountant: '/fees/collect',
+      ACCOUNTANT: '/fees/collect',
+    };
+    if (roleName && roleRoutes[roleName]) {
+      return roleRoutes[roleName];
+    }
+    return '/';
+  };
+
+  // If already logged in, redirect directly to callbackUrl or role dashboard
   useEffect(() => {
     if (status === 'authenticated') {
-      window.location.href = '/';
+      const target = getRedirectUrl((session?.user as any)?.role);
+      window.location.href = target;
     }
-  }, [status]);
+  }, [status, session]);
 
   const executeSignIn = async (userEmail: string, userPass: string, roleName?: string) => {
     const cleanEmail = userEmail.trim();
@@ -33,10 +62,16 @@ export default function LoginPage() {
     if (roleName) setLoadingRole(roleName);
 
     try {
+      const targetUrl = getRedirectUrl(roleName);
+      const fullCallbackUrl = typeof window !== 'undefined'
+        ? (targetUrl.startsWith('http') ? targetUrl : `${window.location.origin}${targetUrl.startsWith('/') ? targetUrl : `/${targetUrl}`}`)
+        : targetUrl;
+
       const result = await signIn('credentials', {
         email: cleanEmail,
         password: cleanPassword,
         redirect: false,
+        callbackUrl: fullCallbackUrl,
       });
 
       if (result?.error) {
@@ -45,11 +80,11 @@ export default function LoginPage() {
       } else {
         toast.success('Login successful! Redirecting...');
         // Full page navigation ensures session cookies are recognized and cache is refreshed
-        window.location.href = '/';
+        window.location.href = targetUrl;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Sign-in exception:', err);
-      toast.error('Something went wrong. Please try again.');
+      toast.error(err?.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
       setLoadingRole(null);

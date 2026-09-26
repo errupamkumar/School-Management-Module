@@ -8,12 +8,15 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search');
 
     const where: any = {};
-    if (search) {
+    if (search && search.trim()) {
+      const trimmed = search.trim();
       where.OR = [
-        { fatherName: { contains: search, mode: 'insensitive' } },
-        { fatherPhone: { contains: search, mode: 'insensitive' } },
-        { motherName: { contains: search, mode: 'insensitive' } },
-        { students: { some: { firstName: { contains: search, mode: 'insensitive' } } } },
+        { fatherName: { contains: trimmed } },
+        { fatherPhone: { contains: trimmed } },
+        { motherName: { contains: trimmed } },
+        { students: { some: { firstName: { contains: trimmed } } } },
+        { students: { some: { lastName: { contains: trimmed } } } },
+        { students: { some: { admissionNo: { contains: trimmed } } } },
       ];
     }
 

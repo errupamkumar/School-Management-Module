@@ -19,12 +19,30 @@ export async function GET(req: NextRequest) {
     if (sectionId) where.sectionId = sectionId;
     if (campusId && campusId !== 'ALL') where.campusId = campusId;
     if (session && session !== 'ALL') where.session = session;
-    if (search) {
-      where.OR = [
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-        { admissionNo: { contains: search, mode: 'insensitive' } },
+    if (search && search.trim()) {
+      const trimmedSearch = search.trim();
+      const searchTokens = trimmedSearch.split(/\s+/).filter(Boolean);
+
+      const conditions: any[] = [
+        { firstName: { contains: trimmedSearch } },
+        { lastName: { contains: trimmedSearch } },
+        { admissionNo: { contains: trimmedSearch } },
+        { rollNo: { contains: trimmedSearch } },
+        { parent: { fatherName: { contains: trimmedSearch } } },
+        { parent: { fatherPhone: { contains: trimmedSearch } } },
       ];
+
+      // Multi-word search support (e.g. "Manish Kumar" matches firstName: Manish AND lastName: Kumar)
+      if (searchTokens.length >= 2) {
+        conditions.push({
+          AND: [
+            { firstName: { contains: searchTokens[0] } },
+            { lastName: { contains: searchTokens.slice(1).join(' ') } },
+          ],
+        });
+      }
+
+      where.OR = conditions;
     }
 
     const [students, total] = await Promise.all([
@@ -41,7 +59,7 @@ export async function GET(req: NextRequest) {
         },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        orderBy: { admissionNo: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { admissionNo: 'desc' }],
       }),
       prisma.student.count({ where }),
     ]);
@@ -112,46 +130,78 @@ export async function POST(req: NextRequest) {
       if (foundSection) sectionId = foundSection.id;
     }
 
+    // Validate all mandatory student fields
+    const missingFields: string[] = [];
+    if (!body.firstName?.trim()) missingFields.push('First Name');
+    if (!body.lastName?.trim()) missingFields.push('Last Name');
+    if (!body.gender) missingFields.push('Gender');
+    if (!body.dob) missingFields.push('Date of Birth');
+    if (!classId) missingFields.push('Class');
+    if (!sectionId) missingFields.push('Section');
+
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Missing required admission fields: ${missingFields.join(', ')}. Please fill all required fields.`,
+        },
+        { status: 400 }
+      );
+    }
+
     const bloodGroup = body.bloodGroup ? BLOOD_GROUP_MAP[body.bloodGroup] || null : null;
 
-    // Create user first
-    const email = body.fatherEmail || `${admissionNo.toLowerCase()}@student.vidyalaya.com`;
+    // Unique student user email
+    const studentEmail = body.studentEmail || `${admissionNo.toLowerCase()}@student.vidyalaya.com`;
 
     const result = await prisma.$transaction(async (tx) => {
-      // Create parent user & parent record
+      // Create parent user & parent record (or link existing parent)
       let parentId: string | undefined;
       if (body.fatherName) {
-        const parentUser = await tx.user.create({
-          data: {
-            email: `parent.${admissionNo.toLowerCase()}@vidyalaya.com`,
-            phone: body.fatherPhone || null,
-            password: await bcrypt.hash('parent123', 10),
-            role: 'PARENT',
-            campusId: campusId || null,
-          },
+        let parentUser = body.fatherPhone
+          ? await tx.user.findFirst({ where: { phone: body.fatherPhone } })
+          : null;
+
+        if (!parentUser) {
+          parentUser = await tx.user.create({
+            data: {
+              email: `parent.${admissionNo.toLowerCase()}@vidyalaya.com`,
+              phone: body.fatherPhone || null,
+              password: await bcrypt.hash('parent123', 10),
+              role: 'PARENT',
+              campusId: campusId || null,
+            },
+          });
+        }
+
+        let parent = await tx.parent.findUnique({
+          where: { userId: parentUser.id },
         });
-        const parent = await tx.parent.create({
-          data: {
-            userId: parentUser.id,
-            fatherName: body.fatherName,
-            fatherPhone: body.fatherPhone,
-            fatherEmail: body.fatherEmail,
-            fatherIdCard: body.fatherIdCard,
-            fatherOccupation: body.fatherOccupation,
-            motherName: body.motherName,
-            motherPhone: body.motherPhone,
-            motherOccupation: body.motherOccupation,
-            religion: body.religion || null,
-            annualIncome: body.annualIncome ? parseFloat(body.annualIncome) : null,
-          },
-        });
+
+        if (!parent) {
+          parent = await tx.parent.create({
+            data: {
+              userId: parentUser.id,
+              fatherName: body.fatherName,
+              fatherPhone: body.fatherPhone,
+              fatherEmail: body.fatherEmail,
+              fatherIdCard: body.fatherIdCard,
+              fatherOccupation: body.fatherOccupation,
+              motherName: body.motherName,
+              motherPhone: body.motherPhone,
+              motherOccupation: body.motherOccupation,
+              religion: body.religion || null,
+              annualIncome: body.annualIncome ? parseFloat(body.annualIncome) : null,
+            },
+          });
+        }
         parentId = parent.id;
       }
 
       // Create student user
       const studentUser = await tx.user.create({
         data: {
-          email,
+          email: studentEmail,
           password: defaultPassword,
           role: 'STUDENT',
           campusId: campusId || null,
@@ -192,7 +242,40 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      return student;
+      // Auto-create primary class enrollment
+      try {
+        await tx.studentClassEnrollment.create({
+          data: {
+            studentId: student.id,
+            classId: classId!,
+            isPrimary: true,
+          },
+        });
+      } catch (enrollErr) {
+        console.warn('Class enrollment auto-link warning:', enrollErr);
+      }
+
+      if (body.inquiryId) {
+        try {
+          await tx.admissionInquiry.update({
+            where: { id: body.inquiryId },
+            data: { status: 'ENROLLED' },
+          });
+        } catch {
+          // Ignore if inquiryId is a custom demo ID
+        }
+      }
+
+      const enrolledStudent = await tx.student.findUnique({
+        where: { id: student.id },
+        include: {
+          class: true,
+          section: true,
+          parent: true,
+        },
+      });
+
+      return enrolledStudent || student;
     });
 
     return NextResponse.json({ success: true, data: result, message: 'Student admitted successfully' }, { status: 201 });

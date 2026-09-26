@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { useLanguage } from '@/components/providers/LanguageProvider';
 import {
@@ -26,7 +26,7 @@ interface NotificationItem {
   titleHi: string;
   message: string;
   messageHi: string;
-  category: 'FEE' | 'ATTENDANCE' | 'EXAM' | 'ANNOUNCEMENT' | 'SYSTEM';
+  category: 'FEE' | 'ATTENDANCE' | 'EXAM' | 'ANNOUNCEMENT' | 'SYSTEM' | 'SAFE_ARRIVAL';
   timestamp: string;
   isRead: boolean;
   actionUrl?: string;
@@ -108,8 +108,39 @@ export default function NotificationsPage() {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
+  useEffect(() => {
+    fetch('/api/notifications')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          const apiItems = data.data.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            titleHi: item.title,
+            message: item.message,
+            messageHi: item.message,
+            category: item.category || 'SYSTEM',
+            timestamp: item.time || 'Just now',
+            isRead: item.read || false,
+            actionUrl: item.actionUrl || '/dashboard/parent',
+          }));
+          setNotifications((prev) => {
+            const existingIds = new Set(apiItems.map((a: any) => a.id));
+            return [...apiItems, ...prev.filter((p) => !existingIds.has(p.id))];
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const getCategoryBadge = (category: NotificationItem['category']) => {
     switch (category) {
+      case 'SAFE_ARRIVAL':
+        return {
+          label: lang === 'hi' ? 'सुरक्षित आगमन' : 'Safe Arrival',
+          icon: CheckCircle2,
+          color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+        };
       case 'FEE':
         return {
           label: lang === 'hi' ? 'शुल्क' : 'Fee',
@@ -210,6 +241,7 @@ export default function NotificationsPage() {
           {[
             { key: 'ALL', label: lang === 'hi' ? 'सभी सूचनाएं' : 'All Updates' },
             { key: 'UNREAD', label: `${lang === 'hi' ? 'अपठित' : 'Unread'} (${unreadCount})` },
+            { key: 'SAFE_ARRIVAL', label: lang === 'hi' ? 'सुरक्षित आगमन' : 'Safe Arrival' },
             { key: 'FEE', label: lang === 'hi' ? 'शुल्क अलर्ट' : 'Fee Alerts' },
             { key: 'EXAM', label: lang === 'hi' ? 'परीक्षा' : 'Exams' },
             { key: 'ATTENDANCE', label: lang === 'hi' ? 'उपस्थिति' : 'Attendance' },

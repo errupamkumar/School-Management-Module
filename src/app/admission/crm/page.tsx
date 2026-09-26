@@ -482,6 +482,14 @@ export default function AdmissionCRMPage() {
                           {/* Stage Advance Trigger */}
                           {item.status !== 'ENROLLED' && (
                             <div className="flex items-center gap-1">
+                              <Link
+                                href={`/admission/new?inquiryId=${encodeURIComponent(item.id)}&firstName=${encodeURIComponent(item.firstName || '')}&lastName=${encodeURIComponent(item.lastName || '')}&childName=${encodeURIComponent(`${item.firstName || ''} ${item.lastName || ''}`.trim())}&parentName=${encodeURIComponent(item.parentName || '')}&phone=${encodeURIComponent(item.parentPhone || '')}&email=${encodeURIComponent(item.parentEmail || '')}&gender=${encodeURIComponent(item.gender || '')}&dob=${encodeURIComponent(item.dob ? new Date(item.dob).toISOString().split('T')[0] : '')}&targetClass=${encodeURIComponent(item.class?.name || '')}&classId=${encodeURIComponent(item.classId || '')}&campusId=${encodeURIComponent(item.campusId || '')}${item.sectionId ? `&sectionId=${encodeURIComponent(item.sectionId)}` : ''}${item.aadhaarNo ? `&aadhaarNo=${encodeURIComponent(item.aadhaarNo)}` : ''}${item.notes ? `&notes=${encodeURIComponent(item.notes)}` : ''}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="p-1 rounded hover:bg-purple-50 text-purple-600"
+                                title="Convert in Full Admission Form"
+                              >
+                                <UserPlus size={13} />
+                              </Link>
                               {item.status === 'FEES_PAID' ? (
                                 <button
                                   onClick={(e) => {
@@ -547,6 +555,16 @@ export default function AdmissionCRMPage() {
                   <CreditCard size={14} />
                   <span>Single-Click: Collect First Fee</span>
                 </Link>
+
+                {selectedInquiry.status !== 'ENROLLED' && (
+                  <Link
+                    href={`/admission/new?inquiryId=${encodeURIComponent(selectedInquiry.id)}&firstName=${encodeURIComponent(selectedInquiry.firstName || '')}&lastName=${encodeURIComponent(selectedInquiry.lastName || '')}&childName=${encodeURIComponent(`${selectedInquiry.firstName || ''} ${selectedInquiry.lastName || ''}`.trim())}&parentName=${encodeURIComponent(selectedInquiry.parentName || '')}&phone=${encodeURIComponent(selectedInquiry.parentPhone || '')}&email=${encodeURIComponent(selectedInquiry.parentEmail || '')}&gender=${encodeURIComponent(selectedInquiry.gender || '')}&dob=${encodeURIComponent(selectedInquiry.dob ? new Date(selectedInquiry.dob).toISOString().split('T')[0] : '')}&targetClass=${encodeURIComponent(selectedInquiry.class?.name || '')}&classId=${encodeURIComponent(selectedInquiry.classId || '')}&campusId=${encodeURIComponent(selectedInquiry.campusId || '')}${selectedInquiry.sectionId ? `&sectionId=${encodeURIComponent(selectedInquiry.sectionId)}` : ''}${selectedInquiry.aadhaarNo ? `&aadhaarNo=${encodeURIComponent(selectedInquiry.aadhaarNo)}` : ''}${selectedInquiry.notes ? `&notes=${encodeURIComponent(selectedInquiry.notes)}` : ''}`}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-bold border border-purple-200 transition-colors shadow-sm"
+                  >
+                    <UserPlus size={14} />
+                    <span>Convert in Full Admission Form</span>
+                  </Link>
+                )}
 
                 {selectedInquiry.status !== 'ENROLLED' && (
                   <button

@@ -24,16 +24,21 @@ interface InquiryItem {
   childName: string;
   targetClass: string;
   phone: string;
+  email?: string;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  dob?: string;
+  category?: string;
+  address?: string;
   inquiryDate: string;
   stage: 'NEW' | 'CONTACTED' | 'CAMPUS_TOUR' | 'REGISTERED' | 'DROPPED';
   notes: string;
 }
 
 const initialInquiries: InquiryItem[] = [
-  { id: 'inq-1', parentName: 'Deepak Saxena', childName: 'Aanya Saxena', targetClass: 'Class 1', phone: '9876599901', inquiryDate: '2026-09-22', stage: 'NEW', notes: 'Walk-in inquiry. Interested in CBSE curriculum & transport.' },
+  { id: 'inq-1', parentName: 'Deepak Saxena', childName: 'Aanya Saxena', targetClass: 'Class 1', phone: '9876599901', email: 'deepak.saxena@gmail.com', gender: 'FEMALE', dob: '2020-04-12', inquiryDate: '2026-09-22', stage: 'NEW', notes: 'Walk-in inquiry. Interested in CBSE curriculum & transport.' },
   { id: 'inq-2', parentName: 'Sunil Bajpai', childName: 'Kunal Bajpai', targetClass: 'Class 9', phone: '9876599902', inquiryDate: '2026-09-21', stage: 'CAMPUS_TOUR', notes: 'Scheduled campus tour for Saturday 11 AM.' },
-  { id: 'inq-3', parentName: 'Meena Srivastava', childName: 'Aryan Srivastava', targetClass: 'Class 11 (Science)', phone: '9876599903', inquiryDate: '2026-09-20', stage: 'CONTACTED', notes: 'Counselor shared fee structure and lab details over WhatsApp.' },
-  { id: 'inq-4', parentName: 'Anil Agarwal', childName: 'Nandini Agarwal', targetClass: 'Nursery', phone: '9876599904', inquiryDate: '2026-09-19', stage: 'REGISTERED', notes: 'Admission form collected and token fee paid.' },
+  { id: 'inq-3', parentName: 'Meena Srivastava', childName: 'Aryan Srivastava', targetClass: 'Class 11', phone: '9876599903', email: 'meena.srivastava@yahoo.com', gender: 'MALE', dob: '2010-08-15', inquiryDate: '2026-09-20', stage: 'CONTACTED', notes: 'Counselor shared fee structure and lab details over WhatsApp.' },
+  { id: 'inq-4', parentName: 'Anil Agarwal', childName: 'Nandini Agarwal', targetClass: 'Class 1', phone: '9876599904', gender: 'FEMALE', inquiryDate: '2026-09-19', stage: 'REGISTERED', notes: 'Admission form collected and token fee paid.' },
 ];
 
 export default function InquiriesPage() {
@@ -203,10 +208,11 @@ export default function InquiriesPage() {
                 </a>
 
                 <Link
-                  href={`/admission/new`}
-                  className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition-colors"
+                  href={`/admission/new?inquiryId=${encodeURIComponent(inq.id)}&childName=${encodeURIComponent(inq.childName)}&parentName=${encodeURIComponent(inq.parentName)}&phone=${encodeURIComponent(inq.phone)}&targetClass=${encodeURIComponent(inq.targetClass)}&notes=${encodeURIComponent(inq.notes || '')}${inq.gender ? `&gender=${encodeURIComponent(inq.gender)}` : ''}${inq.dob ? `&dob=${encodeURIComponent(inq.dob)}` : ''}${inq.email ? `&email=${encodeURIComponent(inq.email)}` : ''}${inq.category ? `&category=${encodeURIComponent(inq.category)}` : ''}${inq.address ? `&address=${encodeURIComponent(inq.address)}` : ''}`}
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5"
                 >
-                  Convert to Admission &rarr;
+                  <span>Convert to Admission</span>
+                  <span>&rarr;</span>
                 </Link>
               </div>
             </div>

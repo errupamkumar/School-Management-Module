@@ -1,12 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { PageHeader } from '@/components/ui';
-import { Receipt, Search, Printer, IndianRupee } from 'lucide-react';
+import { Receipt, Search, Printer, IndianRupee, ShieldAlert } from 'lucide-react';
 import { formatCurrency } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
 export default function FeeCollectPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [form, setForm] = useState({
@@ -14,6 +18,32 @@ export default function FeeCollectPage() {
     paymentMode: 'CASH', month: '', transactionId: '', chequeNo: '', bankName: '', remarks: '',
   });
   const [receipt, setReceipt] = useState<any>(null);
+
+  // Security guard: Students and parents cannot access admin collection desk
+  useEffect(() => {
+    if (status === 'loading') return;
+    const role = (session?.user as any)?.role;
+    if (role === 'STUDENT' || role === 'PARENT') {
+      toast.error('Fee collection & student search is for school administration only. Redirecting to your personal fee portal.');
+      router.replace('/fees/my-dues');
+    }
+  }, [session, status, router]);
+
+  if ((session?.user as any)?.role === 'STUDENT' || (session?.user as any)?.role === 'PARENT') {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-3">
+            <ShieldAlert size={28} />
+          </div>
+          <h2 className="text-base font-bold text-gray-900">Redirecting to Your Personal Fee Account...</h2>
+          <p className="text-xs text-gray-500 mt-1">
+            Student search and fee collection is restricted to school accounts administration.
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   // Auto-search if admissionNo query parameter is provided
   useEffect(() => {

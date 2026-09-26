@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { useSession } from 'next-auth/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import {
   Megaphone,
@@ -30,6 +31,10 @@ interface NoticeItem {
 }
 
 export default function NoticesPage() {
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role || '';
+  const canPublish = ['SUPER_ADMIN', 'ADMIN', 'TEACHER'].includes(userRole);
+
   const [notices, setNotices] = useState<NoticeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -162,13 +167,15 @@ export default function NoticesPage() {
             </p>
           </div>
 
-          <button
-            onClick={() => setIsPublishModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all transform active:scale-95"
-          >
-            <Plus size={15} />
-            <span>Publish Circular</span>
-          </button>
+          {canPublish && (
+            <button
+              onClick={() => setIsPublishModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all transform active:scale-95"
+            >
+              <Plus size={15} />
+              <span>Publish Circular</span>
+            </button>
+          )}
         </div>
 
         {/* ========================================================================= */}

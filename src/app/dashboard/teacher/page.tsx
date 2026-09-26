@@ -1,7 +1,7 @@
 'use client';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { StatCard } from '@/components/ui';
-import { Users, CheckSquare, BookOpen, ClipboardList, Video, FileText, Bell, Calendar } from 'lucide-react';
+import { Users, CheckSquare, BookOpen, ClipboardList, Video, FileText, Bell, Calendar, CalendarCheck } from 'lucide-react';
 
 export default function TeacherDashboard() {
   return (
@@ -48,6 +48,7 @@ export default function TeacherDashboard() {
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: 'Mark Attendance', href: '/attendance', icon: <CheckSquare size={20} /> },
+                { label: 'Teacher Parent Meeting (PTM)', href: '/meetings', icon: <CalendarCheck size={20} /> },
                 { label: 'Marks Entry', href: '/exams/marks', icon: <FileText size={20} /> },
                 { label: 'Assign Homework', href: '/homework', icon: <BookOpen size={20} /> },
                 { label: 'Online Class', href: '/online-class', icon: <Video size={20} /> },

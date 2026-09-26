@@ -2,13 +2,21 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 export default function FeesIndexPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
 
   useEffect(() => {
-    router.replace('/fees/collect');
-  }, [router]);
+    if (status === 'loading') return;
+    const role = (session?.user as any)?.role;
+    if (role === 'STUDENT' || role === 'PARENT') {
+      router.replace('/fees/my-dues');
+    } else {
+      router.replace('/fees/collect');
+    }
+  }, [session, status, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

@@ -129,6 +129,77 @@ export default function AdminDashboard() {
   const [smsMessage, setSmsMessage] = useState('');
   const [smsStatus, setSmsStatus] = useState<'idle' | 'sending' | 'success'>('idle');
 
+  // Live Fee Collection & Payer Attribution State (Student vs Parent)
+  const [feeTransactions, setFeeTransactions] = useState<any[]>([
+    {
+      id: 'fee-seed-1',
+      receiptNo: 'REC-2026-1001',
+      studentName: 'Aarav Sharma',
+      studentClass: 'Class 10-A',
+      admissionNo: 'ADM2026100',
+      paidAmount: 3000,
+      paymentMode: 'UPI',
+      payerType: 'PARENT',
+      payerName: 'Rajesh Sharma (Parent)',
+      paymentDate: 'Sep 10, 2026, 11:30 AM',
+    },
+    {
+      id: 'fee-seed-2',
+      receiptNo: 'REC-2026-1002',
+      studentName: 'Rohan Gupta',
+      studentClass: 'Class 10-A',
+      admissionNo: 'ADM2026102',
+      paidAmount: 3000,
+      paymentMode: 'ONLINE',
+      payerType: 'STUDENT',
+      payerName: 'Rohan Gupta (Student)',
+      paymentDate: 'Sep 12, 2026, 03:15 PM',
+    },
+    {
+      id: 'fee-seed-3',
+      receiptNo: 'REC-2026-1003',
+      studentName: 'Ananya Verma',
+      studentClass: 'Class 10-B',
+      admissionNo: 'ADM2026105',
+      paidAmount: 3000,
+      paymentMode: 'CASH',
+      payerType: 'ADMIN',
+      payerName: 'School Accounts Desk',
+      paymentDate: 'Sep 15, 2026, 10:00 AM',
+    },
+  ]);
+  const [feeSummary, setFeeSummary] = useState({
+    totalCollected: 9000,
+    studentPaidTotal: 3000,
+    parentPaidTotal: 3000,
+    adminPaidTotal: 3000,
+    totalTransactions: 3,
+    studentTransactionsCount: 1,
+    parentTransactionsCount: 1,
+  });
+  const [feePayerFilter, setFeePayerFilter] = useState<'ALL' | 'STUDENT' | 'PARENT' | 'ADMIN'>('ALL');
+  const [isRefreshingFees, setIsRefreshingFees] = useState(false);
+
+  const fetchFeeTransactions = async () => {
+    setIsRefreshingFees(true);
+    try {
+      const res = await fetch('/api/fees');
+      const data = await res.json();
+      if (data.success) {
+        if (Array.isArray(data.data) && data.data.length > 0) {
+          setFeeTransactions(data.data);
+        }
+        if (data.summary) {
+          setFeeSummary(data.summary);
+        }
+      }
+    } catch (e) {
+      console.log('Error fetching fee transactions for admin:', e);
+    } finally {
+      setIsRefreshingFees(false);
+    }
+  };
+
   // Load Real Data from API & setup time
   useEffect(() => {
     const updateDateTime = () => {
@@ -179,6 +250,8 @@ export default function AdminDashboard() {
         }
       })
       .catch((err) => console.log('Dashboard API fallback to demo metrics:', err));
+
+    fetchFeeTransactions();
 
     return () => clearInterval(timer);
   }, []);
@@ -957,6 +1030,186 @@ export default function AdminDashboard() {
                 <p className="text-[10px] font-medium text-gray-400 mt-0.5">Estimated</p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 4.5 LIVE FEE COLLECTION & PAYER ATTRIBUTION (STUDENT VS PARENT)           */}
+        {/* ========================================================================= */}
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-gray-100 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <h3 className="text-base sm:text-lg font-black text-gray-900">
+                  Live Fee Collection & Payer Stream
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-100 text-purple-800">
+                  Student vs Parent Tracking
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Real-time ledger recording whether fees were remitted directly by students via Student UPI QR or by parents via Parent Portal.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchFeeTransactions}
+                disabled={isRefreshingFees}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 transition"
+                title="Refresh Real-Time Collection Feed"
+              >
+                <Radio size={14} className={isRefreshingFees ? 'animate-spin text-purple-600' : 'text-gray-500'} />
+                <span>{isRefreshingFees ? 'Refreshing...' : 'Live Sync'}</span>
+              </button>
+              <Link
+                href="/fees"
+                className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-600/20 transition"
+              >
+                <span>Full Ledger</span>
+                <ChevronRight size={14} />
+              </Link>
+            </div>
+          </div>
+
+          {/* 3 Metrics Cards: Total, Student Paid, Parent Paid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Student Paid Total */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50/60 border border-blue-100">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-blue-900 uppercase">Paid by Students Directly</span>
+                <span className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                  <GraduationCap size={16} />
+                </span>
+              </div>
+              <p className="text-2xl font-black text-blue-950 mt-2">
+                {formatCurrency(feeSummary.studentPaidTotal)}
+              </p>
+              <p className="text-[11px] text-blue-700 font-medium mt-0.5">
+                {feeSummary.studentTransactionsCount} payments via Student UPI QR / App
+              </p>
+            </div>
+
+            {/* Parent Paid Total */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-900 uppercase">Paid by Parents</span>
+                <span className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                  <Users size={16} />
+                </span>
+              </div>
+              <p className="text-2xl font-black text-emerald-950 mt-2">
+                {formatCurrency(feeSummary.parentPaidTotal)}
+              </p>
+              <p className="text-[11px] text-emerald-700 font-medium mt-0.5">
+                {feeSummary.parentTransactionsCount} settlements via Parent Portal
+              </p>
+            </div>
+
+            {/* Total Combined Online */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50/60 border border-purple-100">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-900 uppercase">Total Tracked Collections</span>
+                <span className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                  <Receipt size={16} />
+                </span>
+              </div>
+              <p className="text-2xl font-black text-purple-950 mt-2">
+                {formatCurrency(feeSummary.totalCollected)}
+              </p>
+              <p className="text-[11px] text-purple-700 font-medium mt-0.5">
+                {feeSummary.totalTransactions} transactions across student & parent channels
+              </p>
+            </div>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex items-center gap-2 pt-1 border-b border-gray-100 pb-3 overflow-x-auto">
+            <span className="text-xs font-bold text-gray-500 mr-1">Filter by Payer:</span>
+            {[
+              { id: 'ALL', label: `All Channels (${feeTransactions.length})` },
+              { id: 'STUDENT', label: `Paid by Student (${feeSummary.studentTransactionsCount})` },
+              { id: 'PARENT', label: `Paid by Parent (${feeSummary.parentTransactionsCount})` },
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFeePayerFilter(f.id as any)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                  feePayerFilter === f.id
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Transactions Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse min-w-[700px]">
+              <thead>
+                <tr className="bg-gray-50 text-gray-700 font-bold border-b border-gray-200">
+                  <th className="p-3">Receipt No</th>
+                  <th className="p-3">Student & Class</th>
+                  <th className="p-3">Payer Attribution</th>
+                  <th className="p-3">Payment Method</th>
+                  <th className="p-3">Amount (₹)</th>
+                  <th className="p-3">Timestamp</th>
+                  <th className="p-3 text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                {feeTransactions
+                  .filter(tx => feePayerFilter === 'ALL' || tx.payerType === feePayerFilter)
+                  .map((tx, idx) => (
+                    <tr key={tx.id || idx} className="hover:bg-gray-50/70 transition">
+                      <td className="p-3 font-mono font-bold text-purple-700">
+                        {tx.receiptNo}
+                      </td>
+                      <td className="p-3">
+                        <p className="font-bold text-gray-900">{tx.studentName}</p>
+                        <p className="text-[11px] text-gray-400">{tx.studentClass} &bull; {tx.admissionNo}</p>
+                      </td>
+                      <td className="p-3">
+                        {tx.payerType === 'STUDENT' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 font-bold text-[11px]">
+                            <GraduationCap size={13} />
+                            <span>Paid by Student ({tx.payerName || tx.studentName})</span>
+                          </span>
+                        ) : tx.payerType === 'PARENT' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px]">
+                            <Users size={13} />
+                            <span>Paid by Parent ({tx.payerName})</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-800 font-bold text-[11px]">
+                            <Building2 size={13} />
+                            <span>Cash / Admin Desk</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 font-semibold text-gray-800">
+                        <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700 font-mono text-[10px]">
+                          {tx.paymentMode}
+                        </span>
+                      </td>
+                      <td className="p-3 font-mono font-black text-gray-900 text-sm">
+                        {formatCurrency(tx.paidAmount || tx.amount)}
+                      </td>
+                      <td className="p-3 text-[11px] text-gray-500">
+                        {tx.paymentDate}
+                      </td>
+                      <td className="p-3 text-right">
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
+                          Cleared
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
